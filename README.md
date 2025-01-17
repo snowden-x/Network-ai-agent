@@ -1,33 +1,62 @@
-# ReAct AI Agent for Cisco IOS XE using Cisco pyATS
-Talk to your network using a ReAct agentic approach 
+Project Setup Instructions
 
-## Install 
-Please make a virtual environment and install the requirements.txt 
+Prerequisites
 
-```console 
-~/ReACT_AI_Agent_for_Cisco_IOS_XE$ python3 -m venv REACTAGENT
-~/ReACT_AI_Agent_for_Cisco_IOS_XE$ source REACTAGENT/bin/activate 
-(REACTAGENT) ~/ReACT_AI_Agent_for_Cisco_IOS_XE$ pip install -r requirements.txt
-```
+Docker and Docker Compose installed on your system
 
-## Usage 
-(For now before I turn this into a streamlit app)
-Adjust line 237 - the input question 
+Access to Cisco DevNet Sandbox
 
-```python
-# Define the input question
-input_question = "What Cisco IOS-XE version am I running?"
-```
+Valid pyATS testbed file configured for your environment
 
-To the question you want to ask then just run 
-(REACTAGENT) ~/ReACT_AI_Agent_for_Cisco_IOS_XE$ streamlit run reacti_ai_agent_cisco_ios_xe.py
+Getting Started
 
-Visit localhost:8501 
+Clone the Repository
 
-### Please add more 'tools' / functions / parsed pyATS commands! 
+git clone [<repository-url>](https://github.com/automateyournetwork/ReACT_AI_Agent_for_Cisco_IOS_XE)
+cd ReACT_AI_Agent_for_Cisco_IOS_XE
 
-### It Hates a lot of JSON 
-Something like show interfaces returns a LOT of JSON which sort of breaks the agent - happy for suggestions here on how to handle that
+Start the Application
 
+docker-compose up
 
+Access the Application
+Open your browser and visit:
+
+http://localhost:8501
+
+Configuration
+
+Ensure DevNet Sandbox is Active
+
+Confirm that your DevNet sandbox is running and accessible.
+
+Validate Your Testbed File
+
+Check your pyATS testbed file for accuracy and completeness.
+
+pyats validate testbed <path-to-your-testbed-file>
+
+Update the Testbed for Local Device
+
+Modify the testbed file to reflect your local device configurations.
+
+Example snippet:
+
+devices:
+  local_device:
+    os: iosxe
+    type: router
+    connections:
+      cli:
+        protocol: ssh
+        ip: 192.168.1.1
+        port: 22
+
+Stopping the Application
+
+docker-compose down
+
+Support
+
+For issues, please open an issue in this repository.
 
