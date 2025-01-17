@@ -1,0 +1,2 @@
+cd react_ai_agent_cisco_ios_xe
+streamlit run react_ai_agent_cisco_ios_xe.py

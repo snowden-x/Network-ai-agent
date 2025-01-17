@@ -3,8 +3,7 @@ import json
 import difflib
 import streamlit as st
 from pyats.topology import loader
-from langchain_community.chat_models import ChatOpenAI
-#from langchain_community.llms import Ollama
+from langchain_community.llms import Ollama
 from langchain_core.tools import tool, render_text_description
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain.prompts import PromptTemplate
@@ -235,8 +234,7 @@ def learn_logging_tool(dummy_input: str = "") -> dict:
 # ============================================================
 
 # Initialize the LLM (you can replace 'gpt-3.5-turbo' with your desired model)
-#llm = Ollama(model="llama3.1", temperature=0)
-llm = ChatOpenAI(model_name="gpt-4o")
+llm = Ollama(model="command-r7b", temperature=0.7, base_url="http://ollama:11434")
 
 # Create a list of tools
 tools = [run_show_command_tool, check_supported_command_tool, apply_configuration_tool, learn_config_tool, learn_logging_tool]
@@ -272,12 +270,20 @@ Assistant is a network assistant with the capability to run tools to gather info
 - If there is any doubt or ambiguity, always check the command first with the 'check_supported_command_tool'.
 - If you need to apply a configuration change, use 'apply_configuration_tool' with the appropriate configuration commands.
 
+**TOOLS:**  
+{tools}
+
+**Available Tool Names (use exactly as written):**  
+{tool_names}
+
 To use a tool, follow this format:
 
+**FORMAT:**
 Thought: Do I need to use a tool? Yes  
 Action: the action to take, should be one of [{tool_names}]  
 Action Input: the input to the action  
-Observation: the result of the action  
+Observation: the result of the action
+Final Answer: [Answer to the User]  
 
 If the first tool provides a valid command, you MUST immediately run the 'run_show_command_tool' without waiting for another input. Follow the flow like this:
 
@@ -364,7 +370,7 @@ agent = create_react_agent(llm, tools, prompt_template)
 # ============================================================
 
 # Initialize the agent executor
-agent_executor = AgentExecutor(agent=agent, tools=tools, handle_parsing_errors=True, verbose=True, max_iterations=5)
+agent_executor = AgentExecutor(agent=agent, tools=tools, handle_parsing_errors=True, verbose=True, max_iterations=50)
 
 # Initialize Streamlit
 st.title("ReAct AI Agent with pyATS and LangChain")
