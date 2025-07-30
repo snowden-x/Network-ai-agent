@@ -236,28 +236,50 @@ def execute_show_logging():
         # Handle exceptions and provide error information
         return {"error": str(e)}
 
-# Function to discover available devices in the lab
+# Function to discover available devices in the lab (without pyATS validation)
 def discover_lab_devices():
     try:
-        # Load the testbed
-        testbed = loader.load('testbed.yaml')
+        import yaml
+        
+        # Load testbed.yaml directly without pyATS validation
+        with open('testbed.yaml', 'r') as file:
+            testbed_data = yaml.safe_load(file)
         
         devices_info = {}
-        for device_name, device in testbed.devices.items():
-            devices_info[device_name] = {
-                "alias": device.alias,
-                "type": device.type,
-                "os": device.os,
-                "platform": getattr(device, 'platform', 'unknown'),
-                "ip": device.connections.cli.ip,
-                "port": device.connections.cli.port
-            }
+        
+        if 'devices' in testbed_data:
+            for device_name, device_config in testbed_data['devices'].items():
+                try:
+                    devices_info[device_name] = {
+                        "alias": device_config.get('alias', device_name),
+                        "type": device_config.get('type', 'unknown'),
+                        "os": device_config.get('os', 'unknown'),
+                        "platform": device_config.get('platform', 'unknown'),
+                        "ip": device_config.get('connections', {}).get('cli', {}).get('ip', 'unknown'),
+                        "port": device_config.get('connections', {}).get('cli', {}).get('port', 22)
+                    }
+                except Exception as e:
+                    # Skip devices with malformed config
+                    devices_info[device_name] = {
+                        "alias": device_name,
+                        "type": "unknown",
+                        "os": "unknown", 
+                        "platform": "unknown",
+                        "ip": "unknown",
+                        "port": 22,
+                        "error": f"Config parsing error: {str(e)}"
+                    }
         
         return {
             "status": "success",
             "total_devices": len(devices_info),
-            "devices": devices_info
+            "devices": devices_info,
+            "note": "Loaded from testbed.yaml (direct YAML parsing)"
         }
+    except FileNotFoundError:
+        return {"error": "testbed.yaml file not found"}
+    except yaml.YAMLError as e:
+        return {"error": f"Invalid YAML in testbed.yaml: {str(e)}"}
     except Exception as e:
         return {"error": f"Failed to discover devices: {str(e)}"}
 
@@ -266,20 +288,35 @@ def test_lab_connectivity():
     try:
         import subprocess
         import socket
+        import yaml
         
-        # First, try to load testbed to get device IPs
+        # Load testbed.yaml directly without pyATS validation
         try:
-            testbed = loader.load('testbed.yaml')
+            with open('testbed.yaml', 'r') as file:
+                testbed_data = yaml.safe_load(file)
+            
             devices_to_test = {}
             
-            for device_name, device in testbed.devices.items():
-                devices_to_test[device_name] = {
-                    "ip": device.connections.cli.ip,
-                    "alias": device.alias,
-                    "port": device.connections.cli.port
-                }
+            if 'devices' in testbed_data:
+                for device_name, device_config in testbed_data['devices'].items():
+                    try:
+                        connections = device_config.get('connections', {})
+                        cli_config = connections.get('cli', {})
+                        
+                        devices_to_test[device_name] = {
+                            "ip": cli_config.get('ip', 'unknown'),
+                            "alias": device_config.get('alias', device_name),
+                            "port": cli_config.get('port', 22)
+                        }
+                    except Exception as e:
+                        # Skip devices with malformed config
+                        continue
+                        
         except Exception as e:
-            return {"error": f"Could not load testbed: {str(e)}"}
+            return {"error": f"Could not load testbed.yaml: {str(e)}"}
+        
+        if not devices_to_test:
+            return {"error": "No valid devices found in testbed.yaml"}
         
         connectivity_results = {}
         
@@ -287,6 +324,16 @@ def test_lab_connectivity():
             try:
                 ip = device_info["ip"]
                 port = device_info.get("port", 22)
+                
+                # Skip devices with unknown IP
+                if ip == 'unknown':
+                    connectivity_results[device_name] = {
+                        "status": "unknown_ip",
+                        "ip": ip,
+                        "alias": device_info["alias"],
+                        "message": "❌ IP address not configured"
+                    }
+                    continue
                 
                 # Test 1: Ping test
                 ping_result = subprocess.run(
@@ -344,7 +391,8 @@ def test_lab_connectivity():
         return {
             "status": "completed",
             "summary": f"{reachable_count}/{total_devices} devices fully reachable",
-            "results": connectivity_results
+            "results": connectivity_results,
+            "note": "Loaded from testbed.yaml (direct YAML parsing)"
         }
         
     except Exception as e:
@@ -405,6 +453,131 @@ def test_single_device_connectivity(device_ip: str, device_port: int = 22):
             "message": f"❌ Error testing {device_ip}: {str(e)}",
             "error": str(e)
         }
+
+# Function to scan network and discover devices
+def scan_network_for_devices(network_range: str = "192.168.1.0/24", ports: list = [22, 23, 80, 443]):
+    """Scan the network to discover devices with open SSH/Telnet/HTTP ports"""
+    try:
+        import subprocess
+        import socket
+        import ipaddress
+        import concurrent.futures
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+        
+        discovered_devices = []
+        
+        # Parse network range
+        try:
+            network = ipaddress.IPv4Network(network_range, strict=False)
+        except Exception as e:
+            return {"error": f"Invalid network range '{network_range}': {str(e)}"}
+        
+        print(f"🔍 Scanning network {network_range} for devices...")
+        
+        def scan_host(ip):
+            """Scan a single host for open ports"""
+            try:
+                ip_str = str(ip)
+                
+                # Quick ping test first
+                ping_result = subprocess.run(
+                    ['ping', '-c', '1', '-W', '1', ip_str], 
+                    capture_output=True, 
+                    text=True, 
+                    timeout=3
+                )
+                
+                if ping_result.returncode != 0:
+                    return None  # Host not responding to ping
+                
+                # Check for open ports
+                open_ports = []
+                for port in ports:
+                    try:
+                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        sock.settimeout(1)
+                        result = sock.connect_ex((ip_str, port))
+                        if result == 0:
+                            open_ports.append(port)
+                        sock.close()
+                    except:
+                        pass
+                
+                if open_ports:
+                    # Try to identify device type based on open ports
+                    device_type = "unknown"
+                    if 22 in open_ports:
+                        device_type = "network_device"  # SSH open
+                    elif 23 in open_ports:
+                        device_type = "network_device"  # Telnet open
+                    elif 80 in open_ports or 443 in open_ports:
+                        device_type = "web_device"  # HTTP/HTTPS open
+                    
+                    return {
+                        "ip": ip_str,
+                        "open_ports": open_ports,
+                        "device_type": device_type,
+                        "ping_success": True
+                    }
+                
+                return None
+                
+            except Exception as e:
+                return None
+        
+        # Scan network with threading for speed
+        with ThreadPoolExecutor(max_workers=50) as executor:
+            # Submit all IPs for scanning
+            future_to_ip = {executor.submit(scan_host, ip): ip for ip in network.hosts()}
+            
+            # Collect results
+            for future in concurrent.futures.as_completed(future_to_ip, timeout=60):
+                result = future.result()
+                if result:
+                    discovered_devices.append(result)
+        
+        # Sort by IP address
+        discovered_devices.sort(key=lambda x: ipaddress.IPv4Address(x['ip']))
+        
+        return {
+            "status": "completed",
+            "network_scanned": network_range,
+            "total_devices_found": len(discovered_devices),
+            "devices": discovered_devices,
+            "scan_ports": ports
+        }
+        
+    except Exception as e:
+        return {"error": f"Network scan failed: {str(e)}"}
+
+# Function to scan specific IP ranges
+def scan_ip_range(start_ip: str, end_ip: str = None):
+    """Scan a specific IP range for devices"""
+    try:
+        import ipaddress
+        
+        if end_ip:
+            # Scan range from start_ip to end_ip
+            start = ipaddress.IPv4Address(start_ip)
+            end = ipaddress.IPv4Address(end_ip)
+            
+            # Create list of IPs in range
+            ips = []
+            current = start
+            while current <= end:
+                ips.append(current)
+                current += 1
+            
+            # Convert to network format for scanning
+            network_range = f"{start_ip}/32"  # We'll handle the range manually
+            return scan_network_for_devices(network_range)
+        else:
+            # Single IP scan
+            return scan_network_for_devices(f"{start_ip}/32")
+            
+    except Exception as e:
+        return {"error": f"IP range scan failed: {str(e)}"}
 
 # Define the custom tool using the langchain `tool` decorator
 @tool
@@ -563,6 +736,40 @@ def ping_device_tool(ip_address: str) -> dict:
             "error": str(e)
         }
 
+# Network scanning tools
+@tool
+def scan_network_tool(network_range: str = "") -> dict:
+    """Scan the network to discover devices. 
+    Usage: scan_network_tool("192.168.1.0/24") or scan_network_tool("10.0.0.0/24")
+    If no network range provided, will scan common home/office ranges."""
+    
+    # Handle empty or invalid input
+    if not network_range or network_range.strip() == "":
+        # Try common network ranges
+        common_ranges = ["192.168.1.0/24", "192.168.0.0/24", "10.0.0.0/24", "172.16.0.0/24"]
+        
+        for range_to_try in common_ranges:
+            print(f"🔍 Trying network range: {range_to_try}")
+            result = scan_network_for_devices(range_to_try)
+            if result.get("status") == "completed" and result.get("total_devices_found", 0) > 0:
+                return {
+                    **result,
+                    "note": f"Auto-selected network range: {range_to_try}"
+                }
+        
+        # If no devices found in common ranges, return the last result
+        return {
+            **result,
+            "note": f"Tried common ranges: {', '.join(common_ranges)}. No devices found."
+        }
+    
+    return scan_network_for_devices(network_range)
+
+@tool
+def scan_ip_range_tool(start_ip: str, end_ip: str = None) -> dict:
+    """Scan a specific IP range for devices. Usage: scan_ip_range_tool("192.168.1.1", "192.168.1.10")"""
+    return scan_ip_range(start_ip, end_ip)
+
 # ============================================================
 # Define the agent with a custom prompt template
 # ============================================================
@@ -571,7 +778,7 @@ def ping_device_tool(ip_address: str) -> dict:
 llm = Ollama(model="mistral", temperature=0.7, base_url="http://localhost:11434")
 
 # Create a list of tools
-tools = [run_show_command_tool, discover_devices_tool, test_connectivity_tool, test_device_connectivity_tool, ping_device_tool, check_supported_command_tool, apply_configuration_tool, learn_config_tool, learn_logging_tool]
+tools = [run_show_command_tool, discover_devices_tool, test_connectivity_tool, test_device_connectivity_tool, ping_device_tool, scan_network_tool, scan_ip_range_tool, check_supported_command_tool, apply_configuration_tool, learn_config_tool, learn_logging_tool]
 
 # Render text descriptions for the tools for inclusion in the prompt
 tool_descriptions = render_text_description(tools)
@@ -630,23 +837,29 @@ Final Answer: [Answer to the User]
 
 **Examples:**
 
-To discover lab devices:
+To discover devices from config:
 Thought: Do I need to use a tool? Yes  
 Action: discover_devices_tool  
 Action Input: ""  
-Observation: [list of available devices]
+Observation: [list of configured devices]
 
-To execute a command on a specific device:
+To scan network for devices:
+Thought: Do I need to use a tool? Yes  
+Action: scan_network_tool  
+Action Input: "192.168.1.0/24"  
+Observation: [list of discovered devices]
+
+To test a specific device:
+Thought: Do I need to use a tool? Yes  
+Action: ping_device_tool  
+Action Input: "192.168.1.1"  
+Observation: [ping result]
+
+To execute a command on a device:
 Thought: Do I need to use a tool? Yes  
 Action: run_show_command_tool  
 Action Input: command="show ip interface brief", device_name="cisco_router_1"  
 Observation: [parsed output here]
-
-To test lab connectivity:
-Thought: Do I need to use a tool? Yes  
-Action: test_connectivity_tool  
-Action Input: ""  
-Observation: [connectivity status for all devices]
 
 When you have a response to say to the Human, or if you do not need to use a tool, you MUST use the format:
 
@@ -659,7 +872,9 @@ TOOLS:
 
 Assistant has access to the following tools:
 
-- discover_devices_tool: Discover all available devices in the EVE-NG lab
+- discover_devices_tool: Discover devices from testbed.yaml configuration
+- scan_network_tool: Scan network to find devices (active discovery)
+- scan_ip_range_tool: Scan specific IP range for devices
 - test_connectivity_tool: Test connectivity to all lab devices
 - test_device_connectivity_tool: Test connectivity to a specific device (ping + SSH port)
 - ping_device_tool: Simple ping test to check if an IP address is reachable
