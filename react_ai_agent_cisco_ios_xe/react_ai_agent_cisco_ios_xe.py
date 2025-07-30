@@ -187,8 +187,11 @@ def execute_show_run():
         print("Loading testbed...")
         testbed = loader.load('testbed.yaml')
 
-        # Access the device from the testbed
-        device = testbed.devices['Cat8000V']
+        # Get the first available device (since we only have one)
+        device_name = list(testbed.devices.keys())[0]
+        device = testbed.devices[device_name]
+        
+        print(f"Using device: {device_name}")
 
         # Connect to the device
         print("Connecting to device...")
@@ -203,7 +206,11 @@ def execute_show_run():
         device.disconnect()
 
         # Return the learned configuration as JSON
-        return learned_config
+        return {
+            "status": "success",
+            "device_used": device_name,
+            "configuration": learned_config
+        }
     except Exception as e:
         # Handle exceptions and provide error information
         return {"error": str(e)}
@@ -215,8 +222,11 @@ def execute_show_logging():
         print("Loading testbed...")
         testbed = loader.load('testbed.yaml')
 
-        # Access the device from the testbed
-        device = testbed.devices['Cat8000V']
+        # Get the first available device (since we only have one)
+        device_name = list(testbed.devices.keys())[0]
+        device = testbed.devices[device_name]
+        
+        print(f"Using device: {device_name}")
 
         # Connect to the device
         print("Connecting to device...")
@@ -231,7 +241,11 @@ def execute_show_logging():
         device.disconnect()
 
         # Return the learned configuration as JSON
-        return learned_logs
+        return {
+            "status": "success",
+            "device_used": device_name,
+            "logs": learned_logs
+        }
     except Exception as e:
         # Handle exceptions and provide error information
         return {"error": str(e)}
@@ -808,7 +822,8 @@ Assistant is a network assistant with the capability to run tools to gather info
 
 **Lab Environment Context:**
 - You are working with an EVE-NG virtualized lab
-- Devices may include Cisco routers/switches, Juniper devices, and other vendors
+- Currently configured device: Cisco_Switch (192.168.1.60)
+- Use "Cisco_Switch" as the device_name parameter when executing commands
 - Each device has its own IP address and may require different credentials
 - Always identify which device you're working with when providing responses
 
@@ -858,7 +873,7 @@ Observation: [ping result]
 To execute a command on a device:
 Thought: Do I need to use a tool? Yes  
 Action: run_show_command_tool  
-Action Input: command="show ip interface brief", device_name="cisco_router_1"  
+Action Input: command="show ip interface brief", device_name="Cisco_Switch"  
 Observation: [parsed output here]
 
 When you have a response to say to the Human, or if you do not need to use a tool, you MUST use the format:
