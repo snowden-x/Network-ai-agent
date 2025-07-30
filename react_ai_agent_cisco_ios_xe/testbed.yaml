@@ -1,18 +1,61 @@
 ---
+# EVE-NG Lab Testbed Configuration
+# pyATS compatible format
+
 devices:
-  Cat8000V:
-    alias: "Sandbox Router"
+  # Cisco Devices
+  cisco_router_1:
+    alias: "Main Campus Router"
     type: "router"
     os: "iosxe"
-    platform: CSR1kv
+    platform: "CSR1000v"
     credentials:
       default:
         username: admin
-        password: C1sco12345
+        password: admin
+    connections:
+      cli:
+        protocol: telnet
+        ip: 192.168.1.60  # Update with your EVE-NG lab IP
+        port: 22
+        arguments:
+          connection_timeout: 60
+          
+  cisco_switch_1:
+    alias: "Core Switch"
+    type: "switch"
+    os: "iosxe"
+    platform: "Cat9300"
+    credentials:
+      default:
+        username: admin
+        password: admin
     connections:
       cli:
         protocol: ssh
-        ip: devnetsandboxiosxe.cisco.com
+        ip: 192.168.1.11  # Update with your EVE-NG lab IP
         port: 22
         arguments:
-          connection_timeout: 360
+          connection_timeout: 60
+
+  # Juniper Devices (if you have them in EVE-NG)
+  juniper_router_1:
+    alias: "Branch Router"
+    type: "router" 
+    os: "junos"
+    platform: "vMX"
+    credentials:
+      default:
+        username: admin
+        password: admin
+    connections:
+      cli:
+        protocol: ssh
+        ip: 192.168.1.20  # Update with your EVE-NG lab IP
+        port: 22
+        arguments:
+          connection_timeout: 60
+
+# pyATS topology section (simplified)
+topology:
+  lab_name: "Multi-Vendor Lab"
