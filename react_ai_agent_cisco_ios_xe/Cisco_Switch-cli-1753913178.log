@@ -1,0 +1,214 @@
+
+2025-07-30 22:06:18,948: %UNICON-INFO: +++ Cisco_Switch logfile Cisco_Switch-cli-1753913178.log +++
+
+2025-07-30 22:06:18,948: %UNICON-INFO: +++ Unicon plugin iosxe (unicon.plugins.iosxe) +++
+
+IOSv - Cisco Systems Confidential -
+
+Supplemental End User License Restrictions
+
+This IOSv software is provided AS-IS without warranty of any kind. Under no circumstances may this software be used separate from the Cisco Modeling Labs Software that this software was provided with, or deployed or used as part of a production environment.
+
+By using the software, you agree to abide by the terms and conditions of the Cisco End User License Agreement at http://www.cisco.com/go/eula. Unauthorized use or distribution of this software is expressly prohibited.
+
+
+2025-07-30 22:06:19,302: %UNICON-INFO: +++ connection to spawn: ssh -l admin 192.168.1.60 -p 22, id: 4740732240 +++
+
+2025-07-30 22:06:19,302: %UNICON-INFO: connection to Cisco_Switch
+(admin@192.168.1.60) Password: 
+
+IOSv - Cisco Systems Confidential -
+
+Supplemental End User License Restrictions
+
+This IOSv software is provided AS-IS without warranty of any kind. Under no circumstances may this software be used separate from the Cisco Modeling Labs Software that this software was provided with, or deployed or used as part of a production environment.
+
+By using the software, you agree to abide by the terms and conditions of the Cisco End User License Agreement at http://www.cisco.com/go/eula. Unauthorized use or distribution of this software is expressly prohibited.
+
+CORE-SWITCH>
+
+2025-07-30 22:06:19,451: %UNICON-INFO: Storing credentials from default as current_credentials
+
+2025-07-30 22:06:19,452: %UNICON-INFO: Learned hostname(s): 'CORE-SWITCH'.
+
+CORE-SWITCH>
+
+2025-07-30 22:06:19,746: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': executing command 'show version | include operating mode' +++
+show version | include operating mode
+CORE-SWITCH>
+
+2025-07-30 22:06:20,153: %UNICON-INFO: +++ initializing handle +++
+enable
+Password: 
+CORE-SWITCH#
+
+2025-07-30 22:06:20,526: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': executing command 'term length 0' +++
+term length 0
+CORE-SWITCH#
+
+2025-07-30 22:06:20,950: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': executing command 'term width 0' +++
+term width 0
+CORE-SWITCH#
+
+2025-07-30 22:06:21,399: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': executing command 'show version' +++
+show version
+Cisco IOS Software, vios_l2 Software (vios_l2-ADVENTERPRISEK9-M), Experimental Version 15.2(20200924:215240) [sweickge-sep24-2020-l2iol-release 135]
+Copyright (c) 1986-2020 by Cisco Systems, Inc.
+Compiled Tue 29-Sep-20 11:53 by sweickge
+
+
+ROM: Bootstrap program is IOSv
+
+CORE-SWITCH uptime is 3 hours, 11 minutes
+System returned to ROM by reload
+System image file is "flash0:/vios_l2-adventerprisek9-m"
+Last reload reason: Unknown reason
+
+
+
+This product contains cryptographic features and is subject to United
+States and local country laws governing import, export, transfer and
+use. Delivery of Cisco cryptographic products does not imply
+third-party authority to import, export, distribute or use encryption.
+Importers, exporters, distributors and users are responsible for
+compliance with U.S. and local country laws. By using this product you
+agree to comply with applicable laws and regulations. If you are unable
+to comply with U.S. and local laws, return this product immediately.
+
+A summary of U.S. laws governing Cisco cryptographic products may be found at:
+http://www.cisco.com/wwl/export/crypto/tool/stqrg.html
+
+If you require further assistance please contact us by sending email to
+export@cisco.com.
+
+Cisco IOSv () processor (revision 1.0) with 935169K/111616K bytes of memory.
+Processor board ID 9FZ3BJ0X4OT
+1 Virtual Ethernet interface
+8 Gigabit Ethernet interfaces
+DRAM configuration is 72 bits wide with parity disabled.
+256K bytes of non-volatile configuration memory.
+0K bytes of ATA System CompactFlash 0 (Read/Write)
+0K bytes of ATA CompactFlash 1 (Read/Write)
+0K bytes of ATA CompactFlash 2 (Read/Write)
+0K bytes of ATA CompactFlash 3 (Read/Write)
+
+Configuration register is 0x101
+
+CORE-SWITCH#
+
+2025-07-30 22:06:21,652: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': configure +++
+config term
+Enter configuration commands, one per line.  End with CNTL/Z.
+CORE-SWITCH(config)#no logging console
+CORE-SWITCH(config)#line console 0
+CORE-SWITCH(config-line)#exec-timeout 0
+CORE-SWITCH(config-line)#line vty 0 4
+CORE-SWITCH(config-line)#exec-timeout 0
+CORE-SWITCH(config-line)#end
+CORE-SWITCH#
+
+2025-07-30 22:06:23,024: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': executing command 'show install summary' +++
+show install summary
+show install summary
+       ^
+% Invalid input detected at '^' marker.
+
+CORE-SWITCH#
+
+2025-07-30 22:06:23,319: %UNICON-ERROR: Could not learn the os version
+
+2025-07-30 22:06:23,753: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': executing command 'show logging last 50' +++
+show logging last 50
+show logging last 50
+             ^
+% Invalid input detected at '^' marker.
+
+CORE-SWITCH#
+
+2025-07-30 22:06:24,290: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': executing command 'show logging' +++
+show logging
+Syslog logging: enabled (0 messages dropped, 1 messages rate-limited, 0 flushes, 0 overruns, xml disabled, filtering disabled)
+
+No Active Message Discriminator.
+
+
+
+No Inactive Message Discriminator.
+
+
+    Console logging: disabled
+    Monitor logging: level debugging, 0 messages logged, xml disabled,
+                     filtering disabled
+    Buffer logging:  level debugging, 52 messages logged, xml disabled,
+                    filtering disabled
+    Exception Logging: size (8192 bytes)
+    Count and timestamp logging messages: disabled
+    Persistent logging: disabled
+    Trap logging: level informational, 55 message lines logged
+        Logging to 192.168.1.110  (udp port 514, audit disabled,
+              link up),
+              54 message lines logged, 
+              0 message lines rate-limited, 
+              0 message lines dropped-by-MD, 
+              xml disabled, sequence number disabled
+              filtering disabled
+        Logging Source-Interface:       VRF Name:
+
+Log Buffer (8192 bytes):
+
+*Mar  1 00:00:02.774: %ATA-6-DEV_FOUND: device 0x1F0
+*Mar  1 00:00:03.026: %NVRAM-5-CONFIG_NVRAM_READ_OK: NVRAM configuration 'flash:/nvram' was read from disk.
+*Jul 30 18:53:54.468: %SPANTREE-5-EXTENDED_SYSID: Extended SysId enabled for type vlan
+*Jul 30 18:54:00.543: %LINK-5-CHANGED: Interface GigabitEthernet0/0, changed state to reset
+*Jul 30 18:54:00.544: %LINK-5-CHANGED: Interface GigabitEthernet0/1, changed state to reset
+*Jul 30 18:54:00.545: %LINK-5-CHANGED: Interface GigabitEthernet0/2, changed state to reset
+*Jul 30 18:54:00.546: %LINK-5-CHANGED: Interface GigabitEthernet0/3, changed state to reset
+*Jul 30 18:54:00.546: %LINK-5-CHANGED: Interface GigabitEthernet1/0, changed state to reset
+*Jul 30 18:54:00.547: %LINK-5-CHANGED: Interface GigabitEthernet1/1, changed state to reset
+*Jul 30 18:54:00.548: %LINK-5-CHANGED: Interface GigabitEthernet1/2, changed state to reset
+*Jul 30 18:54:00.548: %LINK-5-CHANGED: Interface GigabitEthernet1/3, changed state to reset
+*Jul 30 18:54:01.450: %SYS-6-LOGGINGHOST_STARTSTOP: Logging to host 192.168.1.110 port 0 CLI Request Triggered
+*Jul 30 18:54:01.530: %SYS-5-CONFIG_I: Configured from memory by console
+*Jul 30 18:54:01.723: %LINEPROTO-5-UPDOWN: Line protocol on Interface GigabitEthernet0/0, changed state to up
+*Jul 30 18:54:01.725: %LINEPROTO-5-UPDOWN: Line protocol on Interface GigabitEthernet0/1, changed state to up
+*Jul 30 18:54:01.726: %LINEPROTO-5-UPDOWN: Line protocol on Interface GigabitEthernet0/2, changed state to up
+*Jul 30 18:54:01.726: %LINEPROTO-5-UPDOWN: Line protocol on Interface GigabitEthernet0/3, changed state to up
+*Jul 30 18:54:01.727: %LINEPROTO-5-UPDOWN: Line protocol on Interface GigabitEthernet1/1, changed state to up
+*Jul 30 18:54:01.728: %LINEPROTO-5-UPDOWN: Line protocol on Interface GigabitEthernet1/2, changed state to up
+*Jul 30 18:54:01.729: %LINEPROTO-5-UPDOWN: Line protocol on Interface GigabitEthernet1/3, changed state to up
+*Jul 30 18:54:02.192: %LINEPROTO-5-UPDOWN: Line protocol on Interface Vlan1, changed state to down
+*Jul 30 18:54:03.050: %LINK-3-UPDOWN: Interface GigabitEthernet1/3, changed state to up
+*Jul 30 18:54:03.056: %LINK-3-UPDOWN: Interface GigabitEthernet1/2, changed state to up
+*Jul 30 18:54:03.059: %LINK-3-UPDOWN: Interface GigabitEthernet1/1, changed state to up
+*Jul 30 18:54:03.062: %LINK-3-UPDOWN: Interface GigabitEthernet1/0, changed state to up
+*Jul 30 18:54:03.063: %LINK-3-UPDOWN: Interface GigabitEthernet0/3, changed state to up
+*Jul 30 18:54:03.066: %LINK-3-UPDOWN: Interface GigabitEthernet0/2, changed state to up
+*Jul 30 18:54:03.069: %LINK-3-UPDOWN: Interface GigabitEthernet0/1, changed state to up
+*Jul 30 18:54:03.075: %LINK-3-UPDOWN: Interface GigabitEthernet0/0, changed state to up
+*Jul 30 18:54:12.501: %SYS-5-RESTART: System restarted --
+Cisco IOS Software, vios_l2 Software (vios_l2-ADVENTERPRISEK9-M), Experimental Version 15.2(20200924:215240) [sweickge-sep24-2020-l2iol-release 135]
+Copyright (c) 1986-2020 by Cisco Systems, Inc.
+Compiled Tue 29-Sep-20 11:53 by sweickge
+*Jul 30 18:54:12.582: %PNP-6-PNP_DISCOVERY_STOPPED: PnP Discovery stopped (Startup Config Present)
+*Jul 30 18:54:12.588: %SSH-5-ENABLED: SSH 1.99 has been enabled
+*Jul 30 18:54:13.433: %SYS-6-LOGGINGHOST_STARTSTOP: Logging to host 192.168.1.110 port 514 started - CLI initiated
+*Jul 30 18:55:49.497: %PLATFORM-5-SIGNATURE_VERIFIED: Image 'flash0:/vios_l2-adventerprisek9-m' passed code signing verification
+*Jul 30 19:15:28.510: %CRYPTO-6-AUTOGEN: Generated new 768 bit key pair
+*Jul 30 19:36:43.885: %SSH-3-NO_MATCH: No matching kex algorithm found: client ecdh-sha2-nistp256,sntrup761x25519-sha512,sntrup761x25519-sha512@openssh.com,mlkem768x25519-sha256,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256,ext-info-c,kex-strict-c-v00@openssh.com server diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1
+*Jul 30 19:52:46.647: %SSH-3-NO_MATCH: No matching hostkey algorithm found: client ssh-ed25519-cert-v01@openssh.com,ecdsa-sha2-nistp256-cert-v01@openssh.com,ecdsa-sha2-nistp384-cert-v01@openssh.com,ecdsa-sha2-nistp521-cert-v01@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com,sk-ecdsa-sha2-nistp256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,ssh-ed25519,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,sk-ssh-ed25519@openssh.com,sk-ecdsa-sha2-nistp256@openssh.com,rsa-sha2-512,rsa-sha2-256 server ssh-rsa
+*Jul 30 20:00:15.003: %SYS-5-CONFIG_I: Configured from console by console
+*Jul 30 20:00:19.162: %GRUB-5-CONFIG_WRITING: GRUB configuration is being updated on disk. Please wait...
+*Jul 30 20:00:19.974: %GRUB-5-CONFIG_WRITTEN: GRUB configuration was written to disk successfully.
+*Jul 30 20:13:30.248: %SSH-3-NO_MATCH: No matching kex algorithm found: client ecdh-sha2-nistp256,sntrup761x25519-sha512,sntrup761x25519-sha512@openssh.com,mlkem768x25519-sha256,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256,ext-info-c,kex-strict-c-v00@openssh.com server diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1
+*Jul 30 20:22:27.657: %SSH-3-NO_MATCH: No matching kex algorithm found: client ecdh-sha2-nistp256,sntrup761x25519-sha512,sntrup761x25519-sha512@openssh.com,mlkem768x25519-sha256,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256,ext-info-c,kex-strict-c-v00@openssh.com server diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1
+*Jul 30 20:23:47.704: %SSH-3-NO_MATCH: No matching kex algorithm found: client ecdh-sha2-nistp256,sntrup761x25519-sha512,sntrup761x25519-sha512@openssh.com,mlkem768x25519-sha256,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256,ext-info-c,kex-strict-c-v00@openssh.com server diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1
+*Jul 30 20:24:14.772: %SSH-3-NO_MATCH: No matching kex algorithm found: client ecdh-sha2-nistp256,sntrup761x25519-sha512,sntrup761x25519-sha512@openssh.com,mlkem768x25519-sha256,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256,ext-info-c,kex-strict-c-v00@openssh.com server diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1
+*Jul 30 20:27:24.627: %SSH-3-NO_MATCH: No matching kex algorithm found: client ecdh-sha2-nistp256,sntrup761x25519-sha512,sntrup761x25519-sha512@openssh.com,mlkem768x25519-sha256,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256,ext-info-c,kex-strict-c-v00@openssh.com server diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1
+*Jul 30 20:39:43.274: %SYS-5-CONFIG_I: Configured from console by console
+*Jul 30 20:39:53.901: %GRUB-5-CONFIG_WRITING: GRUB configuration is being updated on disk. Please wait...
+*Jul 30 20:39:54.707: %GRUB-5-CONFIG_WRITTEN: GRUB configuration was written to disk successfully.
+*Jul 30 20:56:37.327: %SYS-5-CONFIG_I: Configured from console by console
+*Jul 30 21:55:36.902: %SYS-5-LOG_CONFIG_CHANGE: Console logging disabled
+*Jul 30 21:55:37.362: %SYS-5-CONFIG_I: Configured from console by admin on vty0 (192.168.1.110)
+*Jul 30 22:04:48.658: %SYS-5-CONFIG_I: Configured from console by admin on vty0 (192.168.1.110)
+CORE-SWITCH#

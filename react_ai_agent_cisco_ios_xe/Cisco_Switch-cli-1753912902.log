@@ -1,0 +1,43 @@
+
+2025-07-30 22:01:42,032: %UNICON-INFO: +++ Cisco_Switch logfile Cisco_Switch-cli-1753912902.log +++
+
+2025-07-30 22:01:42,033: %UNICON-INFO: +++ Unicon plugin iosxe (unicon.plugins.iosxe) +++
+
+IOSv - Cisco Systems Confidential -
+
+Supplemental End User License Restrictions
+
+This IOSv software is provided AS-IS without warranty of any kind. Under no circumstances may this software be used separate from the Cisco Modeling Labs Software that this software was provided with, or deployed or used as part of a production environment.
+
+By using the software, you agree to abide by the terms and conditions of the Cisco End User License Agreement at http://www.cisco.com/go/eula. Unauthorized use or distribution of this software is expressly prohibited.
+
+
+2025-07-30 22:01:42,441: %UNICON-INFO: +++ connection to spawn: ssh -l admin 192.168.1.60 -p 22, id: 5779477504 +++
+
+2025-07-30 22:01:42,441: %UNICON-INFO: connection to Cisco_Switch
+(admin@192.168.1.60) Password: 
+
+IOSv - Cisco Systems Confidential -
+
+Supplemental End User License Restrictions
+
+This IOSv software is provided AS-IS without warranty of any kind. Under no circumstances may this software be used separate from the Cisco Modeling Labs Software that this software was provided with, or deployed or used as part of a production environment.
+
+By using the software, you agree to abide by the terms and conditions of the Cisco End User License Agreement at http://www.cisco.com/go/eula. Unauthorized use or distribution of this software is expressly prohibited.
+
+CORE-SWITCH>
+
+2025-07-30 22:01:42,590: %UNICON-INFO: Storing credentials from default as current_credentials
+
+2025-07-30 22:01:42,591: %UNICON-WARNING: Invalid hostname detected: found CORE-SWITCH, expected Cisco_Switch
+
+CORE-SWITCH>
+
+2025-07-30 22:01:42,876: %UNICON-INFO: +++ Cisco_Switch(alias=The Main Switch) with via 'cli': executing command 'show version | include operating mode' +++
+show version | include operating mode
+CORE-SWITCH>
+
+2025-07-30 22:01:43,343: %UNICON-INFO: +++ initializing handle +++
+enable
+Password: 
+CORE-SWITCH#

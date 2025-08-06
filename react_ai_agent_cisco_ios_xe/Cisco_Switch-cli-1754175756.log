@@ -1,0 +1,196 @@
+
+2025-08-02 23:02:36,723: %UNICON-INFO: +++ Cisco_Switch logfile Cisco_Switch-cli-1754175756.log +++
+
+2025-08-02 23:02:36,723: %UNICON-INFO: +++ Unicon plugin iosxe (unicon.plugins.iosxe) +++
+
+IOSv - Cisco Systems Confidential -
+
+Supplemental End User License Restrictions
+
+This IOSv software is provided AS-IS without warranty of any kind. Under no circumstances may this software be used separate from the Cisco Modeling Labs Software that this software was provided with, or deployed or used as part of a production environment.
+
+By using the software, you agree to abide by the terms and conditions of the Cisco End User License Agreement at http://www.cisco.com/go/eula. Unauthorized use or distribution of this software is expressly prohibited.
+
+
+2025-08-02 23:02:37,084: %UNICON-INFO: +++ connection to spawn: ssh -l admin 192.168.1.60 -p 22, id: 4680422736 +++
+
+2025-08-02 23:02:37,084: %UNICON-INFO: connection to Cisco_Switch
+(admin@192.168.1.60) Password: 
+
+IOSv - Cisco Systems Confidential -
+
+Supplemental End User License Restrictions
+
+This IOSv software is provided AS-IS without warranty of any kind. Under no circumstances may this software be used separate from the Cisco Modeling Labs Software that this software was provided with, or deployed or used as part of a production environment.
+
+By using the software, you agree to abide by the terms and conditions of the Cisco End User License Agreement at http://www.cisco.com/go/eula. Unauthorized use or distribution of this software is expressly prohibited.
+
+CORE-SWITCH>
+
+2025-08-02 23:02:37,199: %UNICON-INFO: Storing credentials from default as current_credentials
+
+2025-08-02 23:02:37,200: %UNICON-INFO: Learned hostname(s): 'CORE-SWITCH'.
+
+CORE-SWITCH>
+
+2025-08-02 23:02:37,469: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': executing command 'show version | include operating mode' +++
+show version | include operating mode
+CORE-SWITCH>
+
+2025-08-02 23:02:37,799: %UNICON-INFO: +++ initializing handle +++
+enable
+Password: 
+CORE-SWITCH#
+
+2025-08-02 23:02:38,136: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': executing command 'term length 0' +++
+term length 0
+CORE-SWITCH#
+
+2025-08-02 23:02:38,557: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': executing command 'term width 0' +++
+term width 0
+CORE-SWITCH#
+
+2025-08-02 23:02:38,959: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': executing command 'show version' +++
+show version
+Cisco IOS Software, vios_l2 Software (vios_l2-ADVENTERPRISEK9-M), Experimental Version 15.2(20200924:215240) [sweickge-sep24-2020-l2iol-release 135]
+Copyright (c) 1986-2020 by Cisco Systems, Inc.
+Compiled Tue 29-Sep-20 11:53 by sweickge
+
+
+ROM: Bootstrap program is IOSv
+
+CORE-SWITCH uptime is 1 hour, 2 minutes
+System returned to ROM by reload
+System image file is "flash0:/vios_l2-adventerprisek9-m"
+Last reload reason: Unknown reason
+
+
+
+This product contains cryptographic features and is subject to United
+States and local country laws governing import, export, transfer and
+use. Delivery of Cisco cryptographic products does not imply
+third-party authority to import, export, distribute or use encryption.
+Importers, exporters, distributors and users are responsible for
+compliance with U.S. and local country laws. By using this product you
+agree to comply with applicable laws and regulations. If you are unable
+to comply with U.S. and local laws, return this product immediately.
+
+A summary of U.S. laws governing Cisco cryptographic products may be found at:
+http://www.cisco.com/wwl/export/crypto/tool/stqrg.html
+
+If you require further assistance please contact us by sending email to
+export@cisco.com.
+
+Cisco IOSv () processor (revision 1.0) with 935169K/111616K bytes of memory.
+Processor board ID 9FZ3BJ0X4OT
+1 Virtual Ethernet interface
+8 Gigabit Ethernet interfaces
+DRAM configuration is 72 bits wide with parity disabled.
+256K bytes of non-volatile configuration memory.
+0K bytes of ATA System CompactFlash 0 (Read/Write)
+0K bytes of ATA CompactFlash 1 (Read/Write)
+0K bytes of ATA CompactFlash 2 (Read/Write)
+0K bytes of ATA CompactFlash 3 (Read/Write)
+
+Configuration register is 0x101
+
+CORE-SWITCH#
+
+2025-08-02 23:02:39,174: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': configure +++
+config term
+Enter configuration commands, one per line.  End with CNTL/Z.
+CORE-SWITCH(config)#no logging console
+CORE-SWITCH(config)#line console 0
+CORE-SWITCH(config-line)#exec-timeout 0
+CORE-SWITCH(config-line)#line vty 0 4
+CORE-SWITCH(config-line)#exec-timeout 0
+CORE-SWITCH(config-line)#end
+CORE-SWITCH#
+
+2025-08-02 23:02:40,462: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': executing command 'show install summary' +++
+show install summary
+show install summary
+       ^
+% Invalid input detected at '^' marker.
+
+CORE-SWITCH#
+
+2025-08-02 23:02:40,719: %UNICON-ERROR: Could not learn the os version
+
+2025-08-02 23:02:41,159: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': executing command 'show logging' +++
+show logging
+Syslog logging: enabled (0 messages dropped, 1 messages rate-limited, 0 flushes, 0 overruns, xml disabled, filtering disabled)
+
+No Active Message Discriminator.
+
+
+
+No Inactive Message Discriminator.
+
+
+    Console logging: disabled
+    Monitor logging: level debugging, 0 messages logged, xml disabled,
+                     filtering disabled
+    Buffer logging:  level debugging, 42 messages logged, xml disabled,
+                    filtering disabled
+    Exception Logging: size (8192 bytes)
+    Count and timestamp logging messages: disabled
+    Persistent logging: disabled
+    Trap logging: level informational, 45 message lines logged
+        Logging to 192.168.1.110  (udp port 514, audit disabled,
+              link up),
+              44 message lines logged, 
+              0 message lines rate-limited, 
+              0 message lines dropped-by-MD, 
+              xml disabled, sequence number disabled
+              filtering disabled
+        Logging Source-Interface:       VRF Name:
+
+Log Buffer (8192 bytes):
+
+*Mar  1 00:00:02.058: %ATA-6-DEV_FOUND: device 0x1F0
+*Mar  1 00:00:02.267: %NVRAM-5-CONFIG_NVRAM_READ_OK: NVRAM configuration 'flash:/nvram' was read from disk.
+*Aug  2 21:58:07.625: %SPANTREE-5-EXTENDED_SYSID: Extended SysId enabled for type vlan
+*Aug  2 21:58:11.909: %LINK-5-CHANGED: Interface GigabitEthernet0/0, changed state to reset
+*Aug  2 21:58:11.910: %LINK-5-CHANGED: Interface GigabitEthernet0/1, changed state to reset
+*Aug  2 21:58:11.911: %LINK-5-CHANGED: Interface GigabitEthernet0/2, changed state to reset
+*Aug  2 21:58:11.912: %LINK-5-CHANGED: Interface GigabitEthernet0/3, changed state to reset
+*Aug  2 21:58:11.912: %LINK-5-CHANGED: Interface GigabitEthernet1/0, changed state to reset
+*Aug  2 21:58:11.913: %LINK-5-CHANGED: Interface GigabitEthernet1/1, changed state to reset
+*Aug  2 21:58:11.914: %LINK-5-CHANGED: Interface GigabitEthernet1/2, changed state to reset
+*Aug  2 21:58:11.915: %LINK-5-CHANGED: Interface GigabitEthernet1/3, changed state to reset
+*Aug  2 21:58:12.661: %SYS-6-LOGGINGHOST_STARTSTOP: Logging to host 192.168.1.110 port 0 CLI Request Triggered
+*Aug  2 21:58:12.729: %SYS-5-CONFIG_I: Configured from memory by console
+*Aug  2 21:58:13.108: %LINEPROTO-5-UPDOWN: Line protocol on Interface GigabitEthernet0/0, changed state to up
+*Aug  2 21:58:13.109: %LINEPROTO-5-UPDOWN: Line protocol on Interface GigabitEthernet0/1, changed state to up
+*Aug  2 21:58:13.110: %LINEPROTO-5-UPDOWN: Line protocol on Interface GigabitEthernet0/2, changed state to up
+*Aug  2 21:58:13.111: %LINEPROTO-5-UPDOWN: Line protocol on Interface GigabitEthernet0/3, changed state to up
+*Aug  2 21:58:13.112: %LINEPROTO-5-UPDOWN: Line protocol on Interface GigabitEthernet1/1, changed state to up
+*Aug  2 21:58:13.113: %LINEPROTO-5-UPDOWN: Line protocol on Interface GigabitEthernet1/2, changed state to up
+*Aug  2 21:58:13.114: %LINEPROTO-5-UPDOWN: Line protocol on Interface GigabitEthernet1/3, changed state to up
+*Aug  2 21:58:13.368: %LINEPROTO-5-UPDOWN: Line protocol on Interface Vlan1, changed state to down
+*Aug  2 21:58:14.204: %LINK-3-UPDOWN: Interface GigabitEthernet1/3, changed state to up
+*Aug  2 21:58:14.207: %LINK-3-UPDOWN: Interface GigabitEthernet1/2, changed state to up
+*Aug  2 21:58:14.209: %LINK-3-UPDOWN: Interface GigabitEthernet1/1, changed state to up
+*Aug  2 21:58:14.211: %LINK-3-UPDOWN: Interface GigabitEthernet1/0, changed state to up
+*Aug  2 21:58:14.212: %LINK-3-UPDOWN: Interface GigabitEthernet0/3, changed state to up
+*Aug  2 21:58:14.214: %LINK-3-UPDOWN: Interface GigabitEthernet0/2, changed state to up
+*Aug  2 21:58:14.216: %LINK-3-UPDOWN: Interface GigabitEthernet0/1, changed state to up
+*Aug  2 21:58:14.220: %LINK-3-UPDOWN: Interface GigabitEthernet0/0, changed state to up
+*Aug  2 21:58:19.137: %SYS-5-RESTART: System restarted --
+Cisco IOS Software, vios_l2 Software (vios_l2-ADVENTERPRISEK9-M), Experimental Version 15.2(20200924:215240) [sweickge-sep24-2020-l2iol-release 135]
+Copyright (c) 1986-2020 by Cisco Systems, Inc.
+Compiled Tue 29-Sep-20 11:53 by sweickge
+*Aug  2 21:58:19.195: %PNP-6-PNP_DISCOVERY_STOPPED: PnP Discovery stopped (Startup Config Present)
+*Aug  2 21:58:19.199: %SSH-5-ENABLED: SSH 1.99 has been enabled
+*Aug  2 21:58:19.909: %SYS-6-LOGGINGHOST_STARTSTOP: Logging to host 192.168.1.110 port 514 started - CLI initiated
+*Aug  2 21:59:20.910: %PLATFORM-5-SIGNATURE_VERIFIED: Image 'flash0:/vios_l2-adventerprisek9-m' passed code signing verification
+*Aug  2 22:11:31.857: %SYS-5-LOG_CONFIG_CHANGE: Console logging disabled
+*Aug  2 22:11:32.302: %SYS-5-CONFIG_I: Configured from console by admin on vty0 (192.168.1.110)
+*Aug  2 22:32:40.730: %SYS-5-CONFIG_I: Configured from console by admin on vty0 (192.168.1.110)
+*Aug  2 22:34:59.842: %SYS-5-CONFIG_I: Configured from console by admin on vty0 (192.168.1.110)
+*Aug  2 22:36:59.076: %SYS-5-CONFIG_I: Configured from console by admin on vty0 (192.168.1.110)
+*Aug  2 22:38:20.844: %SYS-5-CONFIG_I: Configured from console by admin on vty0 (192.168.1.110)
+*Aug  2 22:41:45.706: %SYS-5-CONFIG_I: Configured from console by admin on vty0 (192.168.1.110)
+*Aug  2 22:55:21.642: %SYS-5-CONFIG_I: Configured from console by admin on vty0 (192.168.1.110)
+CORE-SWITCH#
