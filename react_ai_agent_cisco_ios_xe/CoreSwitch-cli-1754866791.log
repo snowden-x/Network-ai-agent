@@ -1,7 +1,7 @@
 
-2025-08-02 22:11:43,108: %UNICON-INFO: +++ Cisco_Switch logfile Cisco_Switch-cli-1754172703.log +++
+2025-08-10 22:59:51,581: %UNICON-INFO: +++ CoreSwitch logfile CoreSwitch-cli-1754866791.log +++
 
-2025-08-02 22:11:43,108: %UNICON-INFO: +++ Unicon plugin iosxe (unicon.plugins.iosxe) +++
+2025-08-10 22:59:51,581: %UNICON-INFO: +++ Unicon plugin iosxe (unicon.plugins.iosxe) +++
 
 IOSv - Cisco Systems Confidential -
 
@@ -12,9 +12,9 @@ This IOSv software is provided AS-IS without warranty of any kind. Under no circ
 By using the software, you agree to abide by the terms and conditions of the Cisco End User License Agreement at http://www.cisco.com/go/eula. Unauthorized use or distribution of this software is expressly prohibited.
 
 
-2025-08-02 22:11:43,482: %UNICON-INFO: +++ connection to spawn: ssh -l admin 192.168.1.60 -p 22, id: 5389014352 +++
+2025-08-10 22:59:52,158: %UNICON-INFO: +++ connection to spawn: ssh -l admin 192.168.1.60 -p 22, id: 4798792720 +++
 
-2025-08-02 22:11:43,483: %UNICON-INFO: connection to Cisco_Switch
+2025-08-10 22:59:52,159: %UNICON-INFO: connection to CoreSwitch
 (admin@192.168.1.60) Password: 
 
 IOSv - Cisco Systems Confidential -
@@ -27,30 +27,30 @@ By using the software, you agree to abide by the terms and conditions of the Cis
 
 CORE-SWITCH>
 
-2025-08-02 22:11:43,696: %UNICON-INFO: Storing credentials from default as current_credentials
+2025-08-10 22:59:52,266: %UNICON-INFO: Storing credentials from default as current_credentials
 
-2025-08-02 22:11:43,697: %UNICON-INFO: Learned hostname(s): 'CORE-SWITCH'.
+2025-08-10 22:59:52,267: %UNICON-INFO: Learned hostname(s): 'CORE-SWITCH'.
 
 CORE-SWITCH>
 
-2025-08-02 22:11:44,023: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': executing command 'show version | include operating mode' +++
+2025-08-10 22:59:52,559: %UNICON-INFO: +++ CORE-SWITCH(alias=Core Switch (Cisco vIOS)) with via 'cli': executing command 'show version | include operating mode' +++
 show version | include operating mode
 CORE-SWITCH>
 
-2025-08-02 22:11:44,443: %UNICON-INFO: +++ initializing handle +++
+2025-08-10 22:59:52,930: %UNICON-INFO: +++ initializing handle +++
 enable
 Password: 
 CORE-SWITCH#
 
-2025-08-02 22:11:44,859: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': executing command 'term length 0' +++
+2025-08-10 22:59:53,285: %UNICON-INFO: +++ CORE-SWITCH(alias=Core Switch (Cisco vIOS)) with via 'cli': executing command 'term length 0' +++
 term length 0
 CORE-SWITCH#
 
-2025-08-02 22:11:45,273: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': executing command 'term width 0' +++
+2025-08-10 22:59:53,759: %UNICON-INFO: +++ CORE-SWITCH(alias=Core Switch (Cisco vIOS)) with via 'cli': executing command 'term width 0' +++
 term width 0
 CORE-SWITCH#
 
-2025-08-02 22:11:45,755: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': executing command 'show version' +++
+2025-08-10 22:59:54,178: %UNICON-INFO: +++ CORE-SWITCH(alias=Core Switch (Cisco vIOS)) with via 'cli': executing command 'show version' +++
 show version
 Cisco IOS Software, vios_l2 Software (vios_l2-ADVENTERPRISEK9-M), Experimental Version 15.2(20200924:215240) [sweickge-sep24-2020-l2iol-release 135]
 Copyright (c) 1986-2020 by Cisco Systems, Inc.
@@ -59,7 +59,7 @@ Compiled Tue 29-Sep-20 11:53 by sweickge
 
 ROM: Bootstrap program is IOSv
 
-CORE-SWITCH uptime is 13 minutes
+CORE-SWITCH uptime is 21 hours, 34 minutes
 System returned to ROM by reload
 System image file is "flash0:/vios_l2-adventerprisek9-m"
 Last reload reason: Unknown reason
@@ -96,7 +96,7 @@ Configuration register is 0x101
 
 CORE-SWITCH#
 
-2025-08-02 22:11:45,989: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': configure +++
+2025-08-10 22:59:54,408: %UNICON-INFO: +++ CORE-SWITCH(alias=Core Switch (Cisco vIOS)) with via 'cli': configure +++
 config term
 Enter configuration commands, one per line.  End with CNTL/Z.
 CORE-SWITCH(config)#no logging console
@@ -107,7 +107,7 @@ CORE-SWITCH(config-line)#exec-timeout 0
 CORE-SWITCH(config-line)#end
 CORE-SWITCH#
 
-2025-08-02 22:11:47,280: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': executing command 'show install summary' +++
+2025-08-10 22:59:55,533: %UNICON-INFO: +++ CORE-SWITCH(alias=Core Switch (Cisco vIOS)) with via 'cli': executing command 'show install summary' +++
 show install summary
 show install summary
        ^
@@ -115,12 +115,12 @@ show install summary
 
 CORE-SWITCH#
 
-2025-08-02 22:11:47,551: %UNICON-ERROR: Could not learn the os version
+2025-08-10 22:59:55,836: %UNICON-ERROR: Could not learn the os version
 
-2025-08-02 22:11:48,010: %UNICON-INFO: +++ CORE-SWITCH(alias=The Main Switch) with via 'cli': executing command 'command="show ip interface brief", device_name="Cisco_Switch' +++
-command="show ip interface brief", device_name="Cisco_Switch
-command="show ip interface brief", device_name="Cisco_Switch
-  ^
+2025-08-10 22:59:56,285: %UNICON-INFO: +++ CORE-SWITCH(alias=Core Switch (Cisco vIOS)) with via 'cli': executing command 'show logging last 250' +++
+show logging last 250
+show logging last 250
+             ^
 % Invalid input detected at '^' marker.
 
 CORE-SWITCH#

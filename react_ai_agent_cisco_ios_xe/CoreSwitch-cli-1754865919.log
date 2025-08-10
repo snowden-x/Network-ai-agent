@@ -1,7 +1,7 @@
 
-2025-07-30 22:01:42,032: %UNICON-INFO: +++ Cisco_Switch logfile Cisco_Switch-cli-1753912902.log +++
+2025-08-10 22:45:19,650: %UNICON-INFO: +++ CoreSwitch logfile CoreSwitch-cli-1754865919.log +++
 
-2025-07-30 22:01:42,033: %UNICON-INFO: +++ Unicon plugin iosxe (unicon.plugins.iosxe) +++
+2025-08-10 22:45:19,651: %UNICON-INFO: +++ Unicon plugin iosxe (unicon.plugins.iosxe) +++
 
 IOSv - Cisco Systems Confidential -
 
@@ -12,9 +12,9 @@ This IOSv software is provided AS-IS without warranty of any kind. Under no circ
 By using the software, you agree to abide by the terms and conditions of the Cisco End User License Agreement at http://www.cisco.com/go/eula. Unauthorized use or distribution of this software is expressly prohibited.
 
 
-2025-07-30 22:01:42,441: %UNICON-INFO: +++ connection to spawn: ssh -l admin 192.168.1.60 -p 22, id: 5779477504 +++
+2025-08-10 22:45:20,095: %UNICON-INFO: +++ connection to spawn: ssh -l admin 192.168.1.60 -p 22, id: 4742054976 +++
 
-2025-07-30 22:01:42,441: %UNICON-INFO: connection to Cisco_Switch
+2025-08-10 22:45:20,095: %UNICON-INFO: connection to CoreSwitch
 (admin@192.168.1.60) Password: 
 
 IOSv - Cisco Systems Confidential -
@@ -27,17 +27,17 @@ By using the software, you agree to abide by the terms and conditions of the Cis
 
 CORE-SWITCH>
 
-2025-07-30 22:01:42,590: %UNICON-INFO: Storing credentials from default as current_credentials
+2025-08-10 22:45:20,232: %UNICON-INFO: Storing credentials from default as current_credentials
 
-2025-07-30 22:01:42,591: %UNICON-WARNING: Invalid hostname detected: found CORE-SWITCH, expected Cisco_Switch
+2025-08-10 22:45:20,233: %UNICON-WARNING: Invalid hostname detected: found CORE-SWITCH, expected CoreSwitch
 
 CORE-SWITCH>
 
-2025-07-30 22:01:42,876: %UNICON-INFO: +++ Cisco_Switch(alias=The Main Switch) with via 'cli': executing command 'show version | include operating mode' +++
+2025-08-10 22:45:20,516: %UNICON-INFO: +++ CoreSwitch(alias=Core Switch (Cisco vIOS)) with via 'cli': executing command 'show version | include operating mode' +++
 show version | include operating mode
 CORE-SWITCH>
 
-2025-07-30 22:01:43,343: %UNICON-INFO: +++ initializing handle +++
+2025-08-10 22:45:20,877: %UNICON-INFO: +++ initializing handle +++
 enable
 Password: 
 CORE-SWITCH#

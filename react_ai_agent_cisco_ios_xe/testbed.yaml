@@ -1,15 +1,16 @@
 ---
 devices:
-  Cisco_Switch:
-    alias: "The Main Switch"
-    type: "switch"
+  CoreSwitch:
+    alias: "Core Switch (Cisco vIOS)"
+    type: "Switch"
     os: "iosxe"
     platform: vIOS
     credentials:
       default:
         username: admin
         password: eve123
-        enable: eve123
+      enable:
+        password: eve123
     connections:
       cli:
         protocol: ssh
@@ -17,3 +18,109 @@ devices:
         port: 22
         arguments:
           connection_timeout: 360
+          learn_hostname: true
+        settings:
+          GRACEFUL_DISCONNECT_WAIT_SEC: 0
+          POST_DISCONNECT_WAIT_SEC: 0
+          PROMPT_RECOVERY: true
+          PROMPT_RECOVERY_RETRIES: 3
+
+  ServersSwitch:
+    alias: "Servers Switch (Cisco vIOS)"
+    type: "Switch"
+    os: "iosxe"
+    platform: vIOS
+    credentials:
+      default:
+        username: admin
+        password: eve123
+      enable:
+        password: eve123
+    connections:
+      cli:
+        protocol: ssh
+        ip: 192.168.1.66
+        port: 22
+        arguments:
+          connection_timeout: 360
+          learn_hostname: true
+        settings:
+          GRACEFUL_DISCONNECT_WAIT_SEC: 0
+          POST_DISCONNECT_WAIT_SEC: 0
+          PROMPT_RECOVERY: true
+          PROMPT_RECOVERY_RETRIES: 3
+
+  MarketingSwitch:
+    alias: "Marketing Switch (Cisco vIOS)"
+    type: "Switch"
+    os: "iosxe"
+    platform: vIOS
+    credentials:
+      default:
+        username: admin
+        password: eve123
+      enable:
+        password: eve123
+    connections:
+      cli:
+        protocol: ssh
+        ip: 192.168.1.67
+        port: 22
+        arguments:
+          connection_timeout: 360
+          learn_hostname: true
+        settings:
+          GRACEFUL_DISCONNECT_WAIT_SEC: 0
+          POST_DISCONNECT_WAIT_SEC: 0
+          PROMPT_RECOVERY: true
+          PROMPT_RECOVERY_RETRIES: 3
+
+  EngineeringSwitch:
+    alias: "Engineering Switch (Cisco vIOS)"
+    type: "Switch"
+    os: "iosxe"
+    platform: vIOS
+    credentials:
+      default:
+        username: admin
+        password: eve123
+      enable:
+        password: eve123
+    connections:
+      cli:
+        protocol: ssh
+        ip: 192.168.1.68
+        port: 22
+        arguments:
+          connection_timeout: 360
+          learn_hostname: true
+        settings:
+          GRACEFUL_DISCONNECT_WAIT_SEC: 0
+          POST_DISCONNECT_WAIT_SEC: 0
+          PROMPT_RECOVERY: true
+          PROMPT_RECOVERY_RETRIES: 3
+
+  AccessPoint:
+    alias: "Access Point (Cisco vIOS L3)"
+    type: "Switch"
+    os: "iosxe"
+    platform: vIOS
+    credentials:
+      default:
+        username: admin
+        password: eve123
+      enable:
+        password: eve123
+    connections:
+      cli:
+        protocol: ssh
+        ip: 192.168.1.122
+        port: 22
+        arguments:
+          connection_timeout: 360
+          learn_hostname: true
+        settings:
+          GRACEFUL_DISCONNECT_WAIT_SEC: 0
+          POST_DISCONNECT_WAIT_SEC: 0
+          PROMPT_RECOVERY: true
+          PROMPT_RECOVERY_RETRIES: 3
