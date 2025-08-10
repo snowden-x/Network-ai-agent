@@ -1,6 +1,9 @@
 import os
 import json
 import difflib
+import subprocess
+import shutil
+import sys
 import streamlit as st
 from pyats.topology import loader
 from langchain_community.llms import Ollama
@@ -198,6 +201,171 @@ def execute_show_logging():
         # Handle exceptions and provide error information
         return {"error": str(e)}
 
+# ============================================================
+# Host Connectivity & Discovery helpers
+# ============================================================
+
+def _command_exists(command_name: str) -> bool:
+    return shutil.which(command_name) is not None
+
+def _parse_kv_args(input_str: str):
+    """Parse a simple input format like:
+    - "host.example.com count=5 timeout=2"
+    - "8.8.8.8"
+    Returns: (positional_args: list[str], options: dict[str, str])
+    """
+    if not isinstance(input_str, str):
+        return [], {}
+    tokens = input_str.strip().split()
+    positional = []
+    options = {}
+    for token in tokens:
+        if "=" in token:
+            key, _, value = token.partition("=")
+            options[key.strip().lower()] = value.strip()
+        else:
+            positional.append(token)
+    return positional, options
+
+def _run_subprocess(cmd: list[str]):
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        return {
+            "command": " ".join(cmd),
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "returncode": result.returncode,
+        }
+    except Exception as exc:
+        return {"error": str(exc), "command": " ".join(cmd)}
+
+# ------------------------------------------------------------
+# Tools: ping, traceroute, DNS lookup (dig/nslookup), port check (nc), arp
+# ------------------------------------------------------------
+
+@tool
+def ping_tool(input_text: str) -> dict:
+    """Ping a host to test reachability. Input format: "<host> [count=<int>] [timeout=<seconds>]".
+    Example: "8.8.8.8 count=4 timeout=2""" 
+    positional, options = _parse_kv_args(input_text)
+    if not positional:
+        return {"error": "Missing host. Usage: '<host> [count=<int>] [timeout=<seconds>]'"}
+    host = positional[0]
+    count = options.get("count", "4")
+    # Timeout flags differ across OS; keep it simple and portable
+    cmd = ["ping", "-c", str(count), host]
+    if not _command_exists("ping"):
+        return {"error": "System 'ping' not found on PATH."}
+    result = _run_subprocess(cmd)
+    result["reachable"] = result.get("returncode", 1) == 0
+    return result
+
+@tool
+def traceroute_tool(input_text: str) -> dict:
+    """Trace the route to a host. Input format: "<host> [max_hops=<int>]".
+    Example: "cloudflare.com max_hops=25"""
+    positional, options = _parse_kv_args(input_text)
+    if not positional:
+        return {"error": "Missing host. Usage: '<host> [max_hops=<int>]'"}
+    host = positional[0]
+    max_hops = options.get("max_hops")
+    if not _command_exists("traceroute"):
+        return {"error": "System 'traceroute' not found on PATH."}
+    cmd = ["traceroute"]
+    if max_hops:
+        cmd += ["-m", str(max_hops)]
+    cmd.append(host)
+    return _run_subprocess(cmd)
+
+@tool
+def dns_lookup_tool(input_text: str) -> dict:
+    """DNS lookup using dig (preferred) or nslookup. Input: "<name> [type=A|AAAA|CNAME|MX|TXT|PTR|NS]".
+    Example: "example.com type=MX"""
+    positional, options = _parse_kv_args(input_text)
+    if not positional:
+        return {"error": "Missing name. Usage: '<name> [type=A|AAAA|CNAME|MX|TXT|PTR|NS]'"}
+    name = positional[0]
+    rtype = options.get("type", "A").upper()
+    if _command_exists("dig"):
+        cmd = ["dig", "+short", name, rtype]
+        res = _run_subprocess(cmd)
+        return res
+    elif _command_exists("nslookup"):
+        cmd = ["nslookup", "-querytype=" + rtype, name]
+        return _run_subprocess(cmd)
+    else:
+        return {"error": "Neither 'dig' nor 'nslookup' found on PATH."}
+
+@tool
+def port_check_tool(input_text: str) -> dict:
+    """Check TCP port connectivity using netcat (nc). Input: "<host> <port> [timeout=<seconds>]".
+    Example: "example.com 443 timeout=3"""
+    positional, options = _parse_kv_args(input_text)
+    if len(positional) < 2:
+        return {"error": "Usage: '<host> <port> [timeout=<seconds>]'"}
+    host, port = positional[0], positional[1]
+    timeout = options.get("timeout", "3")
+    if not _command_exists("nc"):
+        return {"error": "System 'nc' (netcat) not found on PATH."}
+    # BSD netcat (macOS) supports -w for timeout; -z for scan, -v verbose
+    cmd = ["nc", "-vz", "-w", str(timeout), host, str(port)]
+    result = _run_subprocess(cmd)
+    result["connectivity"] = result.get("returncode", 1) == 0
+    return result
+
+@tool
+def arp_tool(input_text: str) -> dict:
+    """Show ARP table or lookup a specific IP. Input: "[ip=<ip>] [interface=<iface>]".
+    Examples: "" (table), "ip=192.168.1.10", "interface=en0"""
+    _, options = _parse_kv_args(input_text)
+    if not _command_exists("arp"):
+        return {"error": "System 'arp' not found on PATH."}
+    ip = options.get("ip")
+    interface = options.get("interface")
+    if ip:
+        cmd = ["arp", "-n", ip]
+    else:
+        cmd = ["arp", "-a"]
+        if interface:
+            cmd += ["-i", interface]
+    return _run_subprocess(cmd)
+
+@tool
+def nmap_scan_tool(input_text: str) -> dict:
+    """Port scanning and service detection using nmap. Input: "<target> [ports=80,443|1-1024] [top_ports=<n>] [service=true]".
+    Examples: "example.com ports=443,8443 service=true" or "10.0.0.0/24 top_ports=100"""
+    positional, options = _parse_kv_args(input_text)
+    if not positional:
+        return {"error": "Missing target. Usage: '<target> [ports=...] [top_ports=<n>] [service=true]'"}
+    if not _command_exists("nmap"):
+        return {"error": "System 'nmap' not found on PATH."}
+    target = positional[0]
+    ports = options.get("ports")
+    top_ports = options.get("top_ports")
+    service_flag = options.get("service", "false").lower() in {"true", "1", "yes"}
+    # Use TCP connect scan (-sT) to avoid requiring root, skip host discovery (-Pn), no DNS (-n)
+    cmd = ["nmap", "-sT", "-Pn", "-n", target]
+    if ports:
+        cmd += ["-p", ports]
+    elif top_ports:
+        cmd += ["--top-ports", str(top_ports)]
+    if service_flag:
+        cmd += ["-sV"]
+    return _run_subprocess(cmd)
+
+@tool
+def whois_lookup_tool(input_text: str) -> dict:
+    """WHOIS lookup for IP or domain ownership info. Input: "<domain_or_ip>".
+    Example: "whois example.com" or "whois 8.8.8.8"""
+    positional, _ = _parse_kv_args(input_text)
+    if not positional:
+        return {"error": "Missing target. Usage: '<domain_or_ip>'"}
+    if not _command_exists("whois"):
+        return {"error": "System 'whois' not found on PATH."}
+    target = positional[0]
+    cmd = ["whois", target]
+    return _run_subprocess(cmd)
+
 # Define the custom tool using the langchain `tool` decorator
 @tool
 def run_show_command_tool(command: str) -> dict:
@@ -249,7 +417,23 @@ def learn_logging_tool(dummy_input: str = "") -> dict:
 llm = Ollama(model="mistral", temperature=0.7, base_url="http://localhost:11434")
 
 # Create a list of tools
-tools = [run_show_command_tool, check_supported_command_tool, apply_configuration_tool, learn_config_tool, learn_logging_tool]
+tools = [
+    # Device tools
+    run_show_command_tool,
+    check_supported_command_tool,
+    apply_configuration_tool,
+    learn_config_tool,
+    learn_logging_tool,
+    # Host connectivity & discovery tools
+    ping_tool,
+    traceroute_tool,
+    dns_lookup_tool,
+    port_check_tool,
+    arp_tool,
+    # Basic information gathering
+    nmap_scan_tool,
+    whois_lookup_tool,
+]
 
 # Render text descriptions for the tools for inclusion in the prompt
 tool_descriptions = render_text_description(tools)
@@ -263,7 +447,7 @@ Assistant is constantly learning and improving. It can process and understand la
 
 NETWORK INSTRUCTIONS:
 
-Assistant is a network assistant with the capability to run tools to gather information, configure the network, and provide accurate answers. You MUST use the provided tools for checking interface statuses, retrieving the running configuration, configuring settings, or finding which commands are supported.
+Assistant is a network assistant with the capability to run tools to gather information, configure the network, and provide accurate answers. You MUST use the provided tools for checking interface statuses, retrieving the running configuration, configuring settings, connectivity discovery (ping, traceroute, DNS), port reachability, ARP table lookups, or finding which commands are supported.
 
 **Important Guidelines:**
 
@@ -274,6 +458,7 @@ Assistant is a network assistant with the capability to run tools to gather info
 5. **For configuration changes, use the 'apply_configuration_tool' with the necessary configuration string (single or multi-line).**
 6. **Do NOT use any command modifiers such as pipes (`|`), `include`, `exclude`, `begin`, `redirect`, or any other modifiers.**
 7. **If the command is not recognized, always use the 'check_supported_command_tool' to clarify the command before proceeding.**
+ 8. **For connectivity testing, use 'ping_tool' (basic reachability), 'traceroute_tool' (path and latency), 'dns_lookup_tool' (DNS resolution), 'port_check_tool' (TCP port connectivity), and 'arp_tool' (Layer 2 address resolution).**
 
 **Using the Tools:**
 
@@ -349,6 +534,14 @@ Assistant has access to the following tools:
 - run_show_command_tool: Executes a supported 'show' command on the network device and returns the parsed output.
 - apply_configuration_tool: Applies the provided configuration commands on the network device.
 - learn_config_tool: Learns the running configuration from the network device and returns it as JSON.
+- learn_logging_tool: Retrieves recent logging output from the device.
+- ping_tool: Ping a host to test reachability from the agent host. Input: "<host> [count=<int>] [timeout=<seconds>]".
+- traceroute_tool: Trace the path to a host from the agent host. Input: "<host> [max_hops=<int>]".
+- dns_lookup_tool: DNS resolution via dig or nslookup. Input: "<name> [type=A|AAAA|CNAME|MX|TXT|PTR|NS]".
+- port_check_tool: Check TCP port connectivity using netcat. Input: "<host> <port> [timeout=<seconds>]".
+- arp_tool: Show ARP table or lookup an IP. Input: "[ip=<ip>] [interface=<iface>]".
+ - nmap_scan_tool: Port scanning and service detection using nmap. Input: "<target> [ports=80,443|1-1024] [top_ports=<n>] [service=true]".
+ - whois_lookup_tool: WHOIS lookup for IP or domain ownership info. Input: "<domain_or_ip>".
 
 Begin!
 

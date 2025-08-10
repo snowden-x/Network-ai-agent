@@ -13,7 +13,7 @@ until curl -s http://localhost:11434/health > /dev/null; do
 done
 
 # Pull the Llama 3.2 model
-ollama pull mistral
+ollama pull command-r7b
 
 # Keep the container running
 tail -f /dev/null
