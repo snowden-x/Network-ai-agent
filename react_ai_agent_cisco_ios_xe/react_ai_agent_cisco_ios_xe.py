@@ -11,6 +11,7 @@ from langchain_core.tools import tool, render_text_description
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain.prompts import PromptTemplate
 from genie.libs.parser.utils import get_parser
+import yaml
 
 # Function to run any supported show command using pyATS
 def run_show_command(command: str):
@@ -216,7 +217,13 @@ def _parse_kv_args(input_str: str):
     """
     if not isinstance(input_str, str):
         return [], {}
-    tokens = input_str.strip().split()
+    # Handle quoted strings properly - split on spaces but preserve quoted content
+    import shlex
+    try:
+        tokens = shlex.split(input_str.strip())
+    except ValueError:
+        # Fallback to simple split if shlex fails
+        tokens = input_str.strip().split()
     positional = []
     options = {}
     for token in tokens:
@@ -239,6 +246,173 @@ def _run_subprocess(cmd: list[str]):
     except Exception as exc:
         return {"error": str(exc), "command": " ".join(cmd)}
 
+# ============================================================
+# Topology loading and device resolution
+# ============================================================
+
+_TOPOLOGY_CACHE = None
+_DEVICE_INDEX_CACHE = None
+
+def _normalize_name(name: str) -> str:
+    return "".join(ch for ch in name.lower() if ch.isalnum())
+
+def _load_topology() -> dict:
+    global _TOPOLOGY_CACHE
+    if _TOPOLOGY_CACHE is not None:
+        return _TOPOLOGY_CACHE
+    candidate_paths = [
+        os.environ.get("TOPOLOGY_YAML_PATH"),
+        os.path.join(os.getcwd(), "topology.yaml"),
+        "/Users/xsnowdev/Documents/Projects/sndvt/sndvt-back/data/topology.yaml",
+    ]
+    for path in candidate_paths:
+        if path and os.path.exists(path):
+            try:
+                with open(path, "r") as f:
+                    _TOPOLOGY_CACHE = yaml.safe_load(f) or {}
+                return _TOPOLOGY_CACHE
+            except Exception:
+                continue
+    _TOPOLOGY_CACHE = {}
+    return _TOPOLOGY_CACHE
+
+def _build_device_index() -> dict:
+    global _DEVICE_INDEX_CACHE
+    if _DEVICE_INDEX_CACHE is not None:
+        return _DEVICE_INDEX_CACHE
+    topo = _load_topology()
+    try:
+        tb = loader.load('testbed.yaml')
+        testbed_devices = tb.devices if tb else {}
+    except Exception:
+        testbed_devices = {}
+
+    index: dict[str, dict] = {}
+
+    # Collect names from testbed
+    for tb_name, dev in testbed_devices.items():
+        norm_tb = _normalize_name(tb_name)
+        index.setdefault(norm_tb, {}).update({"testbed_name": tb_name})
+        alias = getattr(dev, "alias", None)
+        if alias:
+            norm_alias = _normalize_name(str(alias))
+            index.setdefault(norm_alias, {}).update({"testbed_name": tb_name})
+            # Also add individual words from alias
+            for word in str(alias).lower().split():
+                norm_word = _normalize_name(word)
+                if norm_word and len(norm_word) > 2:  # Skip very short words
+                    index.setdefault(norm_word, {}).update({"testbed_name": tb_name})
+
+    # Collect names and IPs from topology
+    devices = (topo or {}).get("devices", {})
+    for topo_name, meta in devices.items():
+        norm_topo = _normalize_name(topo_name)
+        entry = index.setdefault(norm_topo, {})
+        entry.update({
+            "topology_name": topo_name,
+            "ip": meta.get("ip_address"),
+            "meta": meta,
+        })
+        
+        # Add individual words from topology name
+        for word in topo_name.lower().split():
+            norm_word = _normalize_name(word)
+            if norm_word and len(norm_word) > 2:  # Skip very short words
+                index.setdefault(norm_word, {}).update({
+                    "topology_name": topo_name,
+                    "ip": meta.get("ip_address"),
+                    "meta": meta,
+                })
+        
+        # Try to link to a testbed name by similarity
+        if "testbed_name" not in entry:
+            # direct exact variants
+            for candidate in list(index.keys()):
+                # If candidate equals norm_topo and already has a testbed_name
+                if candidate == norm_topo and "testbed_name" in index[candidate]:
+                    entry["testbed_name"] = index[candidate]["testbed_name"]
+                    break
+            else:
+                # fuzzy match
+                try:
+                    import difflib as _difflib
+                    candidates = [k for k, v in index.items() if "testbed_name" in v]
+                    if candidates:
+                        best = _difflib.get_close_matches(norm_topo, candidates, n=1, cutoff=0.6)
+                        if best:
+                            entry["testbed_name"] = index[best[0]]["testbed_name"]
+                except Exception:
+                    pass
+
+        # Add type/location aliases if present
+        for key in ("type", "location"):
+            val = meta.get(key)
+            if isinstance(val, str):
+                norm_val = _normalize_name(val)
+                index.setdefault(norm_val, {}).update({
+                    "topology_name": topo_name,
+                    "ip": meta.get("ip_address"),
+                    "meta": meta,
+                    **({"testbed_name": entry.get("testbed_name")} if entry.get("testbed_name") else {}),
+                })
+                # Also add individual words from type/location
+                for word in val.lower().split():
+                    norm_word = _normalize_name(word)
+                    if norm_word and len(norm_word) > 2:
+                        index.setdefault(norm_word, {}).update({
+                            "topology_name": topo_name,
+                            "ip": meta.get("ip_address"),
+                            "meta": meta,
+                            **({"testbed_name": entry.get("testbed_name")} if entry.get("testbed_name") else {}),
+                        })
+
+    _DEVICE_INDEX_CACHE = index
+    return _DEVICE_INDEX_CACHE
+
+def _resolve_device(name_or_alias: str) -> dict:
+    if not name_or_alias:
+        return {"error": "Empty device name"}
+    index = _build_device_index()
+    
+    # Try exact match first
+    key = _normalize_name(name_or_alias)
+    if key in index:
+        return {"status": "ok", **index[key]}
+    
+    # Try partial matches for multi-word names
+    search_terms = name_or_alias.lower().split()
+    for term in search_terms:
+        norm_term = _normalize_name(term)
+        if norm_term in index:
+            return {"status": "ok", **index[norm_term], "note": f"Partial match on '{term}'"}
+    
+    # fuzzy match on full name
+    try:
+        import difflib as _difflib
+        best = _difflib.get_close_matches(key, list(index.keys()), n=1, cutoff=0.6)
+        if best:
+            match = index[best[0]]
+            return {"status": "ok", **match, "note": f"Resolved by similarity from '{name_or_alias}'"}
+    except Exception:
+        pass
+    
+    return {"status": "not_found", "query": name_or_alias}
+
+def _maybe_resolve_host(token: str) -> tuple[str, dict | None]:
+    # If token is an IP or FQDN, leave as-is; else try topology
+    # Check if it's a pure IP address first
+    import ipaddress
+    try:
+        ipaddress.ip_address(token)
+        return token, None  # It's a valid IP, no resolution needed
+    except ValueError:
+        # Not a pure IP, try to resolve as device name
+        res = _resolve_device(token)
+        if res.get("status") == "ok" and res.get("ip"):
+            return res["ip"], res
+        # If resolution fails, return original token
+        return token, None
+
 # ------------------------------------------------------------
 # Tools: ping, traceroute, DNS lookup (dig/nslookup), port check (nc), arp
 # ------------------------------------------------------------
@@ -250,7 +424,7 @@ def ping_tool(input_text: str) -> dict:
     positional, options = _parse_kv_args(input_text)
     if not positional:
         return {"error": "Missing host. Usage: '<host> [count=<int>] [timeout=<seconds>]'"}
-    host = positional[0]
+    host, resolved = _maybe_resolve_host(positional[0])
     count = options.get("count", "4")
     # Timeout flags differ across OS; keep it simple and portable
     cmd = ["ping", "-c", str(count), host]
@@ -258,6 +432,8 @@ def ping_tool(input_text: str) -> dict:
         return {"error": "System 'ping' not found on PATH."}
     result = _run_subprocess(cmd)
     result["reachable"] = result.get("returncode", 1) == 0
+    if resolved:
+        result["resolved"] = resolved
     return result
 
 @tool
@@ -267,7 +443,7 @@ def traceroute_tool(input_text: str) -> dict:
     positional, options = _parse_kv_args(input_text)
     if not positional:
         return {"error": "Missing host. Usage: '<host> [max_hops=<int>]'"}
-    host = positional[0]
+    host, resolved = _maybe_resolve_host(positional[0])
     max_hops = options.get("max_hops")
     if not _command_exists("traceroute"):
         return {"error": "System 'traceroute' not found on PATH."}
@@ -275,7 +451,10 @@ def traceroute_tool(input_text: str) -> dict:
     if max_hops:
         cmd += ["-m", str(max_hops)]
     cmd.append(host)
-    return _run_subprocess(cmd)
+    res = _run_subprocess(cmd)
+    if resolved:
+        res["resolved"] = resolved
+    return res
 
 @tool
 def dns_lookup_tool(input_text: str) -> dict:
@@ -304,6 +483,7 @@ def port_check_tool(input_text: str) -> dict:
     if len(positional) < 2:
         return {"error": "Usage: '<host> <port> [timeout=<seconds>]'"}
     host, port = positional[0], positional[1]
+    host, resolved = _maybe_resolve_host(host)
     timeout = options.get("timeout", "3")
     if not _command_exists("nc"):
         return {"error": "System 'nc' (netcat) not found on PATH."}
@@ -311,6 +491,8 @@ def port_check_tool(input_text: str) -> dict:
     cmd = ["nc", "-vz", "-w", str(timeout), host, str(port)]
     result = _run_subprocess(cmd)
     result["connectivity"] = result.get("returncode", 1) == 0
+    if resolved:
+        result["resolved"] = resolved
     return result
 
 @tool
@@ -329,6 +511,38 @@ def arp_tool(input_text: str) -> dict:
         if interface:
             cmd += ["-i", interface]
     return _run_subprocess(cmd)
+
+@tool
+def resolve_device_tool(name: str) -> dict:
+    """Resolve a device by human-friendly name/alias (e.g., "core switch"). Returns topology info, IP, and pyATS testbed name if available."""
+    return _resolve_device(name)
+
+@tool
+def select_device_tool(name: str) -> dict:
+    """Resolve a device name and set it as the active target for device commands. Use before running show/config tools.
+    Input: "<device name or alias>
+    """
+    res = _resolve_device(name)
+    if res.get("status") == "ok" and res.get("testbed_name"):
+        st.session_state.selected_device = res["testbed_name"]
+        return {"status": "selected", **res}
+    return res
+
+@tool
+def list_devices_tool(dummy: str = "") -> dict:
+    """List known devices from topology and testbed, including friendly names, IPs, and testbed mapping."""
+    index = _build_device_index()
+    devices = {}
+    for k, v in index.items():
+        # prefer canonical topology name as key when available
+        name = v.get("topology_name") or v.get("testbed_name") or k
+        if name not in devices:
+            devices[name] = {
+                "ip": v.get("ip"),
+                "testbed_name": v.get("testbed_name"),
+                "meta": v.get("meta"),
+            }
+    return {"devices": devices}
 
 @tool
 def nmap_scan_tool(input_text: str) -> dict:
@@ -433,6 +647,10 @@ tools = [
     # Basic information gathering
     nmap_scan_tool,
     whois_lookup_tool,
+    # Topology & device selection
+    resolve_device_tool,
+    select_device_tool,
+    list_devices_tool,
 ]
 
 # Render text descriptions for the tools for inclusion in the prompt
@@ -447,7 +665,7 @@ Assistant is constantly learning and improving. It can process and understand la
 
 NETWORK INSTRUCTIONS:
 
-Assistant is a network assistant with the capability to run tools to gather information, configure the network, and provide accurate answers. You MUST use the provided tools for checking interface statuses, retrieving the running configuration, configuring settings, connectivity discovery (ping, traceroute, DNS), port reachability, ARP table lookups, or finding which commands are supported.
+Assistant is a network assistant with the capability to run tools to gather information, configure the network, and provide accurate answers. You MUST use the provided tools for checking interface statuses, retrieving the running configuration, configuring settings, connectivity discovery (ping, traceroute, DNS), port reachability, ARP table lookups, device resolution via topology, or finding which commands are supported.
 
 **Important Guidelines:**
 
@@ -459,6 +677,7 @@ Assistant is a network assistant with the capability to run tools to gather info
 6. **Do NOT use any command modifiers such as pipes (`|`), `include`, `exclude`, `begin`, `redirect`, or any other modifiers.**
 7. **If the command is not recognized, always use the 'check_supported_command_tool' to clarify the command before proceeding.**
  8. **For connectivity testing, use 'ping_tool' (basic reachability), 'traceroute_tool' (path and latency), 'dns_lookup_tool' (DNS resolution), 'port_check_tool' (TCP port connectivity), and 'arp_tool' (Layer 2 address resolution).**
+ 9. **To target a device by human-friendly name (e.g., "core switch"), use 'resolve_device_tool' and 'select_device_tool' to set the active device before running show or config commands.**
 
 **Using the Tools:**
 
@@ -542,6 +761,9 @@ Assistant has access to the following tools:
 - arp_tool: Show ARP table or lookup an IP. Input: "[ip=<ip>] [interface=<iface>]".
  - nmap_scan_tool: Port scanning and service detection using nmap. Input: "<target> [ports=80,443|1-1024] [top_ports=<n>] [service=true]".
  - whois_lookup_tool: WHOIS lookup for IP or domain ownership info. Input: "<domain_or_ip>".
+ - resolve_device_tool: Resolve device by friendly name/alias to topology info and pyATS testbed name.
+ - select_device_tool: Set the active device (in session) by friendly name before running device commands.
+ - list_devices_tool: List known devices from topology and testbed with IPs and mappings.
 
 Begin!
 
