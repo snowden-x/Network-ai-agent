@@ -213,10 +213,12 @@ def _parse_kv_args(input_str: str):
     """Parse a simple input format like:
     - "host.example.com count=5 timeout=2"
     - "8.8.8.8"
+    - "core switch 1.3.6.1.2.1.1.1.0" (multi-word device names)
     Returns: (positional_args: list[str], options: dict[str, str])
     """
     if not isinstance(input_str, str):
         return [], {}
+    
     # Handle quoted strings properly - split on spaces but preserve quoted content
     import shlex
     try:
@@ -224,14 +226,41 @@ def _parse_kv_args(input_str: str):
     except ValueError:
         # Fallback to simple split if shlex fails
         tokens = input_str.strip().split()
-    positional = []
+    
+    if not tokens:
+        return [], {}
+    
+    # Special handling for multi-word device names in SNMP and other tools
+    # Try to find a device name that spans multiple tokens
+    device_name = None
+    remaining_tokens = []
+    
+    # Check if first token(s) might be a device name
+    for i in range(len(tokens), 0, -1):
+        potential_device = " ".join(tokens[:i])
+        # Try to resolve this as a device name
+        res = _resolve_device(potential_device)
+        if res.get("status") == "ok":
+            device_name = potential_device
+            remaining_tokens = tokens[i:]
+            break
+    
+    # If no device name found, use first token as host/device
+    if device_name is None:
+        device_name = tokens[0]
+        remaining_tokens = tokens[1:]
+    
+    positional = [device_name]
     options = {}
-    for token in tokens:
+    
+    # Parse remaining tokens for options
+    for token in remaining_tokens:
         if "=" in token:
             key, _, value = token.partition("=")
             options[key.strip().lower()] = value.strip()
         else:
             positional.append(token)
+    
     return positional, options
 
 def _run_subprocess(cmd: list[str]):
@@ -544,6 +573,129 @@ def list_devices_tool(dummy: str = "") -> dict:
             }
     return {"devices": devices}
 
+# ============================================================
+# SNMP tools for network device management
+# ============================================================
+
+@tool
+def snmp_read_tool(input_text: str) -> dict:
+    """Read SNMP values from a network device. Input: "<device> <oid> [community=public] [version=2c]".
+    Examples: "core switch 1.3.6.1.2.1.1.1.0", "192.168.1.60 1.3.6.1.2.1.1.1.0 community=public version=2c"
+    """
+    positional, options = _parse_kv_args(input_text)
+    if len(positional) < 2:
+        return {"error": "Usage: '<device> <oid> [community=public] [version=2c]'"}
+    
+    device, oid = positional[0], positional[1]
+    community = options.get("community", "public")
+    version = options.get("version", "2c")
+    
+    # Resolve device name to IP if needed
+    host, resolved = _maybe_resolve_host(device)
+    
+    if not _command_exists("snmpget"):
+        return {"error": "System 'snmpget' not found. Install net-snmp tools."}
+    
+    cmd = ["snmpget", "-v", version, "-c", community, host, oid]
+    result = _run_subprocess(cmd)
+    
+    if resolved:
+        result["resolved"] = resolved
+    result["device"] = device
+    result["oid"] = oid
+    
+    return result
+
+@tool
+def snmp_walk_tool(input_text: str) -> dict:
+    """Walk SNMP tree from a network device. Input: "<device> <oid> [community=public] [version=2c]".
+    Examples: "core switch 1.3.6.1.2.1.2", "192.168.1.60 1.3.6.1.2.1.2 community=public version=2c"
+    """
+    positional, options = _parse_kv_args(input_text)
+    if len(positional) < 2:
+        return {"error": "Usage: '<device> <oid> [community=public] [version=2c]'"}
+    
+    device, oid = positional[0], positional[1]
+    community = options.get("community", "public")
+    version = options.get("version", "2c")
+    
+    # Resolve device name to IP if needed
+    host, resolved = _maybe_resolve_host(device)
+    
+    if not _command_exists("snmpwalk"):
+        return {"error": "System 'snmpwalk' not found. Install net-snmp tools."}
+    
+    cmd = ["snmpwalk", "-v", version, "-c", community, host, oid]
+    result = _run_subprocess(cmd)
+    
+    if resolved:
+        result["resolved"] = resolved
+    result["device"] = device
+    result["oid"] = oid
+    
+    return result
+
+@tool
+def snmp_write_tool(input_text: str) -> dict:
+    """Write SNMP values to a network device. Input: "<device> <oid> <type> <value> [community=private] [version=2c]".
+    Examples: "core switch 1.3.6.1.2.1.1.6.0 s 'New Location'", "192.168.1.60 1.3.6.1.2.1.1.6.0 s 'New Location' community=private"
+    Types: s=string, i=integer, u=unsigned, x=hex, d=decimal, n=null, o=object_id, t=timeticks, a=ipaddress
+    """
+    positional, options = _parse_kv_args(input_text)
+    if len(positional) < 4:
+        return {"error": "Usage: '<device> <oid> <type> <value> [community=private] [version=2c]'"}
+    
+    device, oid, snmp_type, value = positional[0], positional[1], positional[2], positional[3]
+    community = options.get("community", "private")
+    version = options.get("version", "2c")
+    
+    # Resolve device name to IP if needed
+    host, resolved = _maybe_resolve_host(device)
+    
+    if not _command_exists("snmpset"):
+        return {"error": "System 'snmpset' not found. Install net-snmp tools."}
+    
+    cmd = ["snmpset", "-v", version, "-c", community, host, oid, snmp_type, value]
+    result = _run_subprocess(cmd)
+    
+    if resolved:
+        result["resolved"] = resolved
+    result["device"] = device
+    result["oid"] = oid
+    result["type"] = snmp_type
+    result["value"] = value
+    
+    return result
+
+@tool
+def snmp_table_tool(input_text: str) -> dict:
+    """Get SNMP table from a network device. Input: "<device> <oid> [community=public] [version=2c]".
+    Examples: "core switch 1.3.6.1.2.1.2.2", "192.168.1.60 1.3.6.1.2.1.2.2 community=public version=2c"
+    """
+    positional, options = _parse_kv_args(input_text)
+    if len(positional) < 2:
+        return {"error": "Usage: '<device> <oid> [community=public] [version=2c]'"}
+    
+    device, oid = positional[0], positional[1]
+    community = options.get("community", "public")
+    version = options.get("version", "2c")
+    
+    # Resolve device name to IP if needed
+    host, resolved = _maybe_resolve_host(device)
+    
+    if not _command_exists("snmptable"):
+        return {"error": "System 'snmptable' not found. Install net-snmp tools."}
+    
+    cmd = ["snmptable", "-v", version, "-c", community, host, oid]
+    result = _run_subprocess(cmd)
+    
+    if resolved:
+        result["resolved"] = resolved
+    result["device"] = device
+    result["oid"] = oid
+    
+    return result
+
 @tool
 def nmap_scan_tool(input_text: str) -> dict:
     """Port scanning and service detection using nmap. Input: "<target> [ports=80,443|1-1024] [top_ports=<n>] [service=true]".
@@ -579,6 +731,172 @@ def whois_lookup_tool(input_text: str) -> dict:
     target = positional[0]
     cmd = ["whois", target]
     return _run_subprocess(cmd)
+
+# ============================================================
+# SSH tools for direct device access
+# ============================================================
+
+@tool
+def ssh_connect_tool(input_text: str) -> dict:
+    """Connect to a device via SSH and run a command. Input: "<device> <command> [username=admin] [timeout=30]".
+    Examples: "core switch show version", "192.168.1.60 show ip interface brief username=admin"
+    Note: Uses default credentials from testbed.yaml if available.
+    """
+    positional, options = _parse_kv_args(input_text)
+    if len(positional) < 2:
+        return {"error": "Usage: '<device> <command> [username=admin] [timeout=30]'"}
+    
+    device, command = positional[0], positional[1]
+    username = options.get("username", "admin")
+    timeout = int(options.get("timeout", "30"))
+    
+    # Resolve device name to IP if needed
+    host, resolved = _maybe_resolve_host(device)
+    
+    # Try to get credentials from testbed if available
+    credentials = None
+    if resolved and resolved.get("testbed_name"):
+        try:
+            tb = loader.load('testbed.yaml')
+            if tb and resolved["testbed_name"] in tb.devices:
+                dev = tb.devices[resolved["testbed_name"]]
+                if hasattr(dev, 'credentials') and dev.credentials:
+                    credentials = dev.credentials
+        except Exception:
+            pass
+    
+    if not _command_exists("ssh"):
+        return {"error": "System 'ssh' not found. Install OpenSSH client."}
+    
+    # Build SSH command
+    cmd = ["ssh", "-o", "ConnectTimeout=" + str(timeout), "-o", "StrictHostKeyChecking=no"]
+    
+    if credentials and hasattr(credentials, 'default') and credentials.default:
+        # Use testbed credentials if available
+        cmd.extend(["-l", username, host, command])
+    else:
+        # Fallback to basic SSH (will prompt for password)
+        cmd.extend(["-l", username, host, command])
+    
+    result = _run_subprocess(cmd)
+    
+    if resolved:
+        result["resolved"] = resolved
+    result["device"] = device
+    result["command"] = command
+    result["username"] = username
+    
+    return result
+
+@tool
+def ssh_interactive_tool(input_text: str) -> dict:
+    """Start an interactive SSH session to a device. Input: "<device> [username=admin] [timeout=30]".
+    Examples: "core switch username=admin", "192.168.1.60"
+    This opens an interactive terminal session.
+    """
+    positional, options = _parse_kv_args(input_text)
+    if not positional:
+        return {"error": "Usage: '<device> [username=admin] [timeout=30]'"}
+    
+    device = positional[0]
+    username = options.get("username", "admin")
+    timeout = int(options.get("timeout", "30"))
+    
+    # Resolve device name to IP if needed
+    host, resolved = _maybe_resolve_host(device)
+    
+    if not _command_exists("ssh"):
+        return {"error": "System 'ssh' not found. Install OpenSSH client."}
+    
+    # For interactive sessions, we'll provide instructions rather than executing
+    result = {
+        "status": "interactive_session",
+        "message": f"To connect interactively to {device} ({host}):",
+        "command": f"ssh -l {username} {host}",
+        "device": device,
+        "host": host,
+        "username": username
+    }
+    
+    if resolved:
+        result["resolved"] = resolved
+    
+    return result
+
+@tool
+def ssh_execute_script_tool(input_text: str) -> dict:
+    """Execute multiple commands on a device via SSH. Input: "<device> <commands> [username=admin] [timeout=60]".
+    Examples: "core switch 'show version; show ip interface brief; show running-config'", 
+              "192.168.1.60 'show version' username=admin"
+    Commands should be separated by semicolons.
+    """
+    positional, options = _parse_kv_args(input_text)
+    if len(positional) < 2:
+        return {"error": "Usage: '<device> <commands> [username=admin] [timeout=60]'"}
+    
+    device, commands = positional[0], positional[1]
+    username = options.get("username", "admin")
+    timeout = int(options.get("timeout", "60"))
+    
+    # Resolve device name to IP if needed
+    host, resolved = _maybe_resolve_host(device)
+    
+    if not _command_exists("ssh"):
+        return {"error": "System 'ssh' not found. Install OpenSSH client."}
+    
+    # Build SSH command with multiple commands
+    cmd = ["ssh", "-o", "ConnectTimeout=" + str(timeout), "-o", "StrictHostKeyChecking=no", 
+           "-l", username, host, commands]
+    
+    result = _run_subprocess(cmd)
+    
+    if resolved:
+        result["resolved"] = resolved
+    result["device"] = device
+    result["commands"] = commands
+    result["username"] = username
+    
+    return result
+
+@tool
+def ssh_file_transfer_tool(input_text: str) -> dict:
+    """Transfer files to/from a device via SCP. Input: "<device> <direction> <local_path> <remote_path> [username=admin]".
+    Examples: "core switch upload config.txt /tmp/config.txt", "192.168.1.60 download /tmp/log.txt log.txt username=admin"
+    Direction: upload (local to remote) or download (remote to local)
+    """
+    positional, options = _parse_kv_args(input_text)
+    if len(positional) < 4:
+        return {"error": "Usage: '<device> <direction> <local_path> <remote_path> [username=admin]'"}
+    
+    device, direction, local_path, remote_path = positional[0], positional[1], positional[2], positional[3]
+    username = options.get("username", "admin")
+    
+    # Resolve device name to IP if needed
+    host, resolved = _maybe_resolve_host(device)
+    
+    if not _command_exists("scp"):
+        return {"error": "System 'scp' not found. Install OpenSSH client."}
+    
+    if direction.lower() not in ["upload", "download"]:
+        return {"error": "Direction must be 'upload' or 'download'"}
+    
+    # Build SCP command
+    if direction.lower() == "upload":
+        cmd = ["scp", "-o", "StrictHostKeyChecking=no", local_path, f"{username}@{host}:{remote_path}"]
+    else:  # download
+        cmd = ["scp", "-o", "StrictHostKeyChecking=no", f"{username}@{host}:{remote_path}", local_path]
+    
+    result = _run_subprocess(cmd)
+    
+    if resolved:
+        result["resolved"] = resolved
+    result["device"] = device
+    result["direction"] = direction
+    result["local_path"] = local_path
+    result["remote_path"] = remote_path
+    result["username"] = username
+    
+    return result
 
 # Define the custom tool using the langchain `tool` decorator
 @tool
@@ -628,7 +946,7 @@ def learn_logging_tool(dummy_input: str = "") -> dict:
 # ============================================================
 
 # Initialize the LLM (you can replace 'gpt-3.5-turbo' with your desired model)
-llm = Ollama(model="mistral", temperature=0.7, base_url="http://localhost:11434")
+llm = Ollama(model="mistral", temperature=0.4, base_url="http://localhost:11434")
 
 # Create a list of tools
 tools = [
@@ -651,6 +969,16 @@ tools = [
     resolve_device_tool,
     select_device_tool,
     list_devices_tool,
+    # SNMP tools
+    snmp_read_tool,
+    snmp_walk_tool,
+    snmp_write_tool,
+    snmp_table_tool,
+    # SSH tools
+    ssh_connect_tool,
+    ssh_interactive_tool,
+    ssh_execute_script_tool,
+    ssh_file_transfer_tool,
 ]
 
 # Render text descriptions for the tools for inclusion in the prompt
@@ -678,6 +1006,8 @@ Assistant is a network assistant with the capability to run tools to gather info
 7. **If the command is not recognized, always use the 'check_supported_command_tool' to clarify the command before proceeding.**
  8. **For connectivity testing, use 'ping_tool' (basic reachability), 'traceroute_tool' (path and latency), 'dns_lookup_tool' (DNS resolution), 'port_check_tool' (TCP port connectivity), and 'arp_tool' (Layer 2 address resolution).**
  9. **To target a device by human-friendly name (e.g., "core switch"), use 'resolve_device_tool' and 'select_device_tool' to set the active device before running show or config commands.**
+ 10. **For SNMP operations, use 'snmp_read_tool' (single OID read), 'snmp_walk_tool' (tree walk), 'snmp_write_tool' (write values), and 'snmp_table_tool' (table retrieval). Use 'public' community for reads and 'private' community for writes.**
+ 11. **For direct device access, use 'ssh_connect_tool' (run single command), 'ssh_execute_script_tool' (run multiple commands), 'ssh_file_transfer_tool' (file transfer), or 'ssh_interactive_tool' (interactive session). These provide direct SSH access to devices.**
 
 **Using the Tools:**
 
@@ -738,6 +1068,42 @@ no shutdown
 """  
 Observation: "Configuration applied successfully."
 
+If you need to read SNMP values:
+
+Example:
+
+Thought: Do I need to use a tool? Yes  
+Action: snmp_read_tool  
+Action Input: "core switch 1.3.6.1.2.1.1.1.0"  
+Observation: [SNMP output here]
+
+If you need to write SNMP values:
+
+Example:
+
+Thought: Do I need to use a tool? Yes  
+Action: snmp_write_tool  
+Action Input: "core switch 1.3.6.1.2.1.1.6.0 s 'New Location' community=private"  
+Observation: [SNMP write result here]
+
+If you need to run commands via SSH:
+
+Example:
+
+Thought: Do I need to use a tool? Yes  
+Action: ssh_connect_tool  
+Action Input: "core switch show version"  
+Observation: [SSH command output here]
+
+If you need to execute multiple commands via SSH:
+
+Example:
+
+Thought: Do I need to use a tool? Yes  
+Action: ssh_execute_script_tool  
+Action Input: "core switch 'show version; show ip interface brief; show running-config'"  
+Observation: [Multiple command outputs here]
+
 When you have a response to say to the Human, or if you do not need to use a tool, you MUST use the format:
 
 Thought: Do I need to use a tool? No  
@@ -764,6 +1130,14 @@ Assistant has access to the following tools:
  - resolve_device_tool: Resolve device by friendly name/alias to topology info and pyATS testbed name.
  - select_device_tool: Set the active device (in session) by friendly name before running device commands.
  - list_devices_tool: List known devices from topology and testbed with IPs and mappings.
+ - snmp_read_tool: Read SNMP values from a network device. Input: "<device> <oid> [community=public] [version=2c]".
+ - snmp_walk_tool: Walk SNMP tree from a network device. Input: "<device> <oid> [community=public] [version=2c]".
+ - snmp_write_tool: Write SNMP values to a network device. Input: "<device> <oid> <type> <value> [community=private] [version=2c]".
+ - snmp_table_tool: Get SNMP table from a network device. Input: "<device> <oid> [community=public] [version=2c]".
+ - ssh_connect_tool: Connect to a device via SSH and run a command. Input: "<device> <command> [username=admin] [timeout=30]".
+ - ssh_interactive_tool: Start an interactive SSH session to a device. Input: "<device> [username=admin] [timeout=30]".
+ - ssh_execute_script_tool: Execute multiple commands on a device via SSH. Input: "<device> <commands> [username=admin] [timeout=60]".
+ - ssh_file_transfer_tool: Transfer files to/from a device via SCP. Input: "<device> <direction> <local_path> <remote_path> [username=admin]".
 
 Begin!
 
