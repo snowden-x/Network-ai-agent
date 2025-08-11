@@ -733,15 +733,20 @@ def whois_lookup_tool(input_text: str) -> dict:
     return _run_subprocess(cmd)
 
 # ============================================================
-# SSH tools for direct device access
+# SSH tools for direct device access (using Paramiko)
 # ============================================================
 
 @tool
 def ssh_connect_tool(input_text: str) -> dict:
     """Connect to a device via SSH and run a command. Input: "<device> <command> [username=admin] [timeout=30]".
     Examples: "core switch show version", "192.168.1.60 show ip interface brief username=admin"
-    Note: Uses default credentials from testbed.yaml if available.
+    Note: Uses credentials from testbed.yaml if available, otherwise prompts for password.
     """
+    try:
+        import paramiko
+    except ImportError:
+        return {"error": "Paramiko not installed. Run: pip install paramiko"}
+    
     positional, options = _parse_kv_args(input_text)
     if len(positional) < 2:
         return {"error": "Usage: '<device> <command> [username=admin] [timeout=30]'"}
@@ -754,45 +759,79 @@ def ssh_connect_tool(input_text: str) -> dict:
     host, resolved = _maybe_resolve_host(device)
     
     # Try to get credentials from testbed if available
-    credentials = None
+    password = None
     if resolved and resolved.get("testbed_name"):
         try:
             tb = loader.load('testbed.yaml')
             if tb and resolved["testbed_name"] in tb.devices:
                 dev = tb.devices[resolved["testbed_name"]]
                 if hasattr(dev, 'credentials') and dev.credentials:
-                    credentials = dev.credentials
-        except Exception:
+                    # Extract password from testbed credentials
+                    creds = dev.credentials
+                    if hasattr(creds, 'default') and creds.default:
+                        if hasattr(creds.default, 'password'):
+                            password = creds.default.password
+                        elif hasattr(creds.default, 'secret'):
+                            password = creds.default.secret
+        except Exception as e:
             pass
     
-    if not _command_exists("ssh"):
-        return {"error": "System 'ssh' not found. Install OpenSSH client."}
-    
-    # Build SSH command
-    cmd = ["ssh", "-o", "ConnectTimeout=" + str(timeout), "-o", "StrictHostKeyChecking=no"]
-    
-    if credentials and hasattr(credentials, 'default') and credentials.default:
-        # Use testbed credentials if available
-        cmd.extend(["-l", username, host, command])
-    else:
-        # Fallback to basic SSH (will prompt for password)
-        cmd.extend(["-l", username, host, command])
-    
-    result = _run_subprocess(cmd)
-    
-    if resolved:
-        result["resolved"] = resolved
-    result["device"] = device
-    result["command"] = command
-    result["username"] = username
-    
-    return result
+    try:
+        # Create SSH client
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        
+        # Connect to device
+        ssh.connect(
+            host,
+            username=username,
+            password=password,
+            timeout=timeout,
+            look_for_keys=False,
+            allow_agent=False
+        )
+        
+        # Execute command
+        stdin, stdout, stderr = ssh.exec_command(command, timeout=timeout)
+        exit_status = stdout.channel.recv_exit_status()
+        
+        # Get output
+        output = stdout.read().decode('utf-8').strip()
+        error = stderr.read().decode('utf-8').strip()
+        
+        # Close connection
+        ssh.close()
+        
+        result = {
+            "status": "success" if exit_status == 0 else "error",
+            "exit_code": exit_status,
+            "output": output,
+            "error": error,
+            "device": device,
+            "command": command,
+            "host": host,
+            "username": username
+        }
+        
+        if resolved:
+            result["resolved"] = resolved
+            
+        return result
+        
+    except paramiko.AuthenticationException:
+        return {"error": f"Authentication failed for {username}@{host}. Check credentials."}
+    except paramiko.SSHException as e:
+        return {"error": f"SSH error connecting to {host}: {str(e)}"}
+    except socket.error as e:
+        return {"error": f"Connection error to {host}: {str(e)}"}
+    except Exception as e:
+        return {"error": f"Unexpected error: {str(e)}"}
 
 @tool
 def ssh_interactive_tool(input_text: str) -> dict:
     """Start an interactive SSH session to a device. Input: "<device> [username=admin] [timeout=30]".
     Examples: "core switch username=admin", "192.168.1.60"
-    This opens an interactive terminal session.
+    This provides connection details for interactive sessions.
     """
     positional, options = _parse_kv_args(input_text)
     if not positional:
@@ -805,14 +844,27 @@ def ssh_interactive_tool(input_text: str) -> dict:
     # Resolve device name to IP if needed
     host, resolved = _maybe_resolve_host(device)
     
-    if not _command_exists("ssh"):
-        return {"error": "System 'ssh' not found. Install OpenSSH client."}
-    
-    # For interactive sessions, we'll provide instructions rather than executing
     result = {
         "status": "interactive_session",
         "message": f"To connect interactively to {device} ({host}):",
-        "command": f"ssh -l {username} {host}",
+        "connection_details": {
+            "host": host,
+            "username": username,
+            "port": 22,
+            "timeout": timeout
+        },
+        "paramiko_code": f"""
+import paramiko
+ssh = paramiko.SSHClient()
+ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+ssh.connect('{host}', username='{username}', timeout={timeout})
+shell = ssh.invoke_shell()
+# Now you can interact with the shell
+shell.send('show version\\n')
+output = shell.recv(4096).decode('utf-8')
+print(output)
+ssh.close()
+        """,
         "device": device,
         "host": host,
         "username": username
@@ -830,6 +882,11 @@ def ssh_execute_script_tool(input_text: str) -> dict:
               "192.168.1.60 'show version' username=admin"
     Commands should be separated by semicolons.
     """
+    try:
+        import paramiko
+    except ImportError:
+        return {"error": "Paramiko not installed. Run: pip install paramiko"}
+    
     positional, options = _parse_kv_args(input_text)
     if len(positional) < 2:
         return {"error": "Usage: '<device> <commands> [username=admin] [timeout=60]'"}
@@ -841,29 +898,85 @@ def ssh_execute_script_tool(input_text: str) -> dict:
     # Resolve device name to IP if needed
     host, resolved = _maybe_resolve_host(device)
     
-    if not _command_exists("ssh"):
-        return {"error": "System 'ssh' not found. Install OpenSSH client."}
+    # Try to get credentials from testbed if available
+    password = None
+    if resolved and resolved.get("testbed_name"):
+        try:
+            tb = loader.load('testbed.yaml')
+            if tb and resolved["testbed_name"] in tb.devices:
+                dev = tb.devices[resolved["testbed_name"]]
+                if hasattr(dev, 'credentials') and dev.credentials:
+                    creds = dev.credentials
+                    if hasattr(creds, 'default') and creds.default:
+                        if hasattr(creds.default, 'password'):
+                            password = creds.default.password
+                        elif hasattr(creds.default, 'secret'):
+                            password = creds.default.secret
+        except Exception as e:
+            pass
     
-    # Build SSH command with multiple commands
-    cmd = ["ssh", "-o", "ConnectTimeout=" + str(timeout), "-o", "StrictHostKeyChecking=no", 
-           "-l", username, host, commands]
-    
-    result = _run_subprocess(cmd)
-    
-    if resolved:
-        result["resolved"] = resolved
-    result["device"] = device
-    result["commands"] = commands
-    result["username"] = username
-    
-    return result
+    try:
+        # Create SSH client
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        
+        # Connect to device
+        ssh.connect(
+            host,
+            username=username,
+            password=password,
+            timeout=timeout,
+            look_for_keys=False,
+            allow_agent=False
+        )
+        
+        # Execute multiple commands
+        stdin, stdout, stderr = ssh.exec_command(commands, timeout=timeout)
+        exit_status = stdout.channel.recv_exit_status()
+        
+        # Get output
+        output = stdout.read().decode('utf-8').strip()
+        error = stderr.read().decode('utf-8').strip()
+        
+        # Close connection
+        ssh.close()
+        
+        result = {
+            "status": "success" if exit_status == 0 else "error",
+            "exit_code": exit_status,
+            "output": output,
+            "error": error,
+            "device": device,
+            "commands": commands,
+            "host": host,
+            "username": username
+        }
+        
+        if resolved:
+            result["resolved"] = resolved
+            
+        return result
+        
+    except paramiko.AuthenticationException:
+        return {"error": f"Authentication failed for {username}@{host}. Check credentials."}
+    except paramiko.SSHException as e:
+        return {"error": f"SSH error connecting to {host}: {str(e)}"}
+    except socket.error as e:
+        return {"error": f"Connection error to {host}: {str(e)}"}
+    except Exception as e:
+        return {"error": f"Unexpected error: {str(e)}"}
 
 @tool
 def ssh_file_transfer_tool(input_text: str) -> dict:
-    """Transfer files to/from a device via SCP. Input: "<device> <direction> <local_path> <remote_path> [username=admin]".
+    """Transfer files to/from a device via SFTP. Input: "<device> <direction> <local_path> <remote_path> [username=admin]".
     Examples: "core switch upload config.txt /tmp/config.txt", "192.168.1.60 download /tmp/log.txt log.txt username=admin"
     Direction: upload (local to remote) or download (remote to local)
     """
+    try:
+        import paramiko
+    except ImportError:
+        return {"error": "Paramiko not installed. Run: pip install paramiko"}
+    
     positional, options = _parse_kv_args(input_text)
     if len(positional) < 4:
         return {"error": "Usage: '<device> <direction> <local_path> <remote_path> [username=admin]'"}
@@ -874,29 +987,84 @@ def ssh_file_transfer_tool(input_text: str) -> dict:
     # Resolve device name to IP if needed
     host, resolved = _maybe_resolve_host(device)
     
-    if not _command_exists("scp"):
-        return {"error": "System 'scp' not found. Install OpenSSH client."}
-    
     if direction.lower() not in ["upload", "download"]:
         return {"error": "Direction must be 'upload' or 'download'"}
     
-    # Build SCP command
-    if direction.lower() == "upload":
-        cmd = ["scp", "-o", "StrictHostKeyChecking=no", local_path, f"{username}@{host}:{remote_path}"]
-    else:  # download
-        cmd = ["scp", "-o", "StrictHostKeyChecking=no", f"{username}@{host}:{remote_path}", local_path]
+    # Try to get credentials from testbed if available
+    password = None
+    if resolved and resolved.get("testbed_name"):
+        try:
+            tb = loader.load('testbed.yaml')
+            if tb and resolved["testbed_name"] in tb.devices:
+                dev = tb.devices[resolved["testbed_name"]]
+                if hasattr(dev, 'credentials') and dev.credentials:
+                    creds = dev.credentials
+                    if hasattr(creds, 'default') and creds.default:
+                        if hasattr(creds.default, 'password'):
+                            password = creds.default.password
+                        elif hasattr(creds.default, 'secret'):
+                            password = creds.default.secret
+        except Exception as e:
+            pass
     
-    result = _run_subprocess(cmd)
-    
-    if resolved:
-        result["resolved"] = resolved
-    result["device"] = device
-    result["direction"] = direction
-    result["local_path"] = local_path
-    result["remote_path"] = remote_path
-    result["username"] = username
-    
-    return result
+    try:
+        # Create SSH client
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        
+        # Connect to device
+        ssh.connect(
+            host,
+            username=username,
+            password=password,
+            timeout=30,
+            look_for_keys=False,
+            allow_agent=False
+        )
+        
+        # Create SFTP session
+        sftp = ssh.open_sftp()
+        
+        try:
+            if direction.lower() == "upload":
+                # Upload local file to remote
+                sftp.put(local_path, remote_path)
+                message = f"File uploaded successfully: {local_path} -> {remote_path}"
+            else:
+                # Download remote file to local
+                sftp.get(remote_path, local_path)
+                message = f"File downloaded successfully: {remote_path} -> {local_path}"
+            
+            result = {
+                "status": "success",
+                "message": message,
+                "direction": direction,
+                "local_path": local_path,
+                "remote_path": remote_path,
+                "device": device,
+                "host": host,
+                "username": username
+            }
+            
+        finally:
+            sftp.close()
+            ssh.close()
+        
+        if resolved:
+            result["resolved"] = resolved
+            
+        return result
+        
+    except paramiko.AuthenticationException:
+        return {"error": f"Authentication failed for {username}@{host}. Check credentials."}
+    except paramiko.SSHException as e:
+        return {"error": f"SSH error connecting to {host}: {str(e)}"}
+    except socket.error as e:
+        return {"error": f"Connection error to {host}: {str(e)}"}
+    except FileNotFoundError:
+        return {"error": f"File not found: {'local' if direction == 'upload' else 'remote'} path does not exist"}
+    except Exception as e:
+        return {"error": f"File transfer failed: {str(e)}"}
 
 # Define the custom tool using the langchain `tool` decorator
 @tool
